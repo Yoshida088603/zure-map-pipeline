@@ -9,9 +9,10 @@
 | 番号 | スクリプト | 役割 |
 |------|------------|------|
 | **10** | `01-raw-data-preview/10-data-preview.sh` | RAW のベースライン・構造・件数・処理区分（ずれまっぷ/14条/CSV 等）の記録。変換はしない。出力は `data/02-raw-data-preview/`。 |
-| **20** | `02-convert/20-shp2geopackage.sh` | **Shapefile → GeoPackage**（`zure` / `14jyo` / `sample`）。**SHP 系（`zure`・`14jyo`）では変換末尾に、SHP 側のフィーチャ合計と GPKG の件数を照合**（`verify_gpkg_vs_shp`）。マージ・PMTiles は行わない。成果は `data/03-geopackage/shp2geopackage/`。 |
+| **20** | `02-convert/20-shp2geopackage.sh` | **Shapefile → GeoPackage**（`zure` / `14jyo` / `sample`）。**`zure` 既定**は **2 段階**（`-makevalid` なし→`ST_MakeValid`）。**`ZURE_TWO_PASS=0`** で従来の 1 段 `-makevalid` のみ。**`ZURE_ONLY_KEI=03`** で系を限定可能。件数照合は `verify_gpkg_vs_shp`。**`zure` で 2 段階のときは python3** が必要。 |
+| **（補助）** | `02-convert/21-zure-two-pass-test.sh` | **`20 zure` のラッパ**（`ZURE_TWO_PASS=1`・`ZURE_ONLY_KEI`・出力先 `two_pass_test_keiNN_<TS>/`）。単一系の試走用。 |
 | **25** | `02-convert/25-csv2geopackage.sh` | **CSV → GeoPackage**（土地活用・街区・都市部など）。`data/03-geopackage/csv2geopackage/`。 |
-| **30** | `02-convert/30-check-geopackage.sh` | **個別 GPKG の追加チェック**。品質の考え方としては RAW と GPKG の論理整合（件数・面積）だが、**件数の主たる自動照合は SHP 経路では `20` が担当**。**現行実装**は `kozu_merged` レイヤの**補助スキャン**（リング未閉合の列挙）。面積の自動突合は未実装。NG なら 20/25 に戻る。 |
+| **30** | `02-convert/30-check-geopackage.sh` | **RAW（公図 SHP）と `geopackage_per_kei/*.gpkg`（`kozu_merged`）のフィーチャ件数突合**（系別＋合計）。`20` の `verify_gpkg_vs_shp` と同じ前提。引数省略時は最新の `run_zure*/geopackage_per_kei`。`ZURE_SHIKUCHOSON` は `20` と同様。NG なら 20/25 に戻る。 |
 | **40** | `02-convert/40-merge-geopackage.sh` | **用途別マージ** → `data/04-merge-geopackage/`。`tochi`/`gaiku`/`toshi`/`kozu`（CSV 系）に加え、ずれまっぷ SHP 経路は **`zure`**（`20` の `geopackage_per_kei` を統合）。 |
 | **42** | `02-convert/42-check-merge-geopackage.sh` | **統合 GPKG の ogrinfo 出力**（レイヤ名・件数・投影などの**目視確認用**。自動の合格／不合格判定はしない）。 |
 | **45** | `02-convert/45-geopackage2pmtiles.sh` | **GPKG → PMTiles**。出力は**入力 GPKG と同じディレクトリ**（既定例は `data/04-merge-geopackage/*.pmtiles`）。公図ずれなら引数で `…/公図と現況のずれデータ_merged.gpkg` を指定。 |
@@ -30,7 +31,48 @@
 ## 前提
 
 - **GDAL**: `ogr2ogr` / `ogrinfo` が **PATH で利用可能**であること（ビルド手順は本 README では扱いません）。`10-data-preview.sh` の **SHP フィーチャ数**は `ogrinfo` が必要です（未導入時はスキップ）。
-- **Python 3**: `25-csv2geopackage.sh` と `30-check-geopackage.sh`（`osgeo.ogr`）で使用。
+- **Python 3**: `25-csv2geopackage.sh` で使用。`20` の **`zure`（既定の 2 段階）**でも SQL 生成に使用。`30-check-geopackage.sh` は **ogrinfo のみ**（件数照合）。
+
+## SHP と GPKG の件数差（調査サマリ）
+
+`30-check-geopackage.sh` で RAW（`ogrinfo`）と `geopackage_per_kei` の件数がずれることがあった。主因は **1 段の `ogr2ogr … -makevalid`** が、修復不能なジオメトリのフィーチャを**出力から落とす**ことにあった。**現在の `20 zure` 既定（`ZURE_TWO_PASS=1`）**は 2 段階でこの差を抑える。従来動作は **`ZURE_TWO_PASS=0`**。
+
+### 原因の整理
+
+| 要因 | 内容 |
+|------|------|
+| ソース | 一部ポリゴンが未閉鎖リング・自己交差など、JTS/GEOS 上「壊れた」状態 |
+| `-makevalid` | 内部で修復に失敗したフィーチャは**黙って欠落** |
+| RAW 側の件数 | `ogrinfo` は**フィーチャ行**を数えるため、ジオメトリが壊れていても件数に含まれる |
+
+### 代表例（3系・広島県府中市）
+
+| 指標 | 件数 |
+|------|------|
+| RAW `ogrinfo`（`府中市_残差データ抽出.shp`） | 4831 |
+| `ogr2ogr -makevalid …` 直後の GPKG | **4830**（1 件欠損） |
+
+欠損は **FID=4614** に特定済み。該当ジオメトリは MULTIPOLYGON だが `Non closed ring` / `IllegalArgumentException: Points of LinearRing do not form a closed linestring` / `Ring Self-intersection` 等が出る。
+
+### 件数整合の改善策（検証済みの方向性）
+
+**2 段階**にすると、府中市では **4831 件を維持したまま**修復に進めることを確認した。
+
+1. **第 1 段**: `-makevalid` **なし**で `-s_srs` / `-t_srs` のみ → GPKG（全件書き出し）
+2. **第 2 段**: その GPKG に対し **SpatiaLite** の `ST_MakeValid(geom)` で別 GPKG に書き出し（実測でも **4831 件**）
+
+`ogr2ogr -makevalid` と `ST_MakeValid` は実装が異なり、形状・面積が変わる可能性がある。全国一括へ組み込む場合は処理時間・ディスクも増える。本番の既定は **`20 zure`（`ZURE_TWO_PASS=1`）**に統合済み。
+
+コマンド例・経緯の詳細は **`docs/investigation-shp-gpkg-geometry-loss.md`** を参照。
+
+### 単一系だけ試す（ラッパ）
+
+```bash
+bash 02-convert/21-zure-two-pass-test.sh      # 既定 03 系のみ → two_pass_test_kei03_<TS>/
+bash 02-convert/21-zure-two-pass-test.sh 08
+```
+
+同等の指定: `ZURE_ONLY_KEI=03 ZURE_TWO_PASS=1 bash 02-convert/20-shp2geopackage.sh zure`。成果は `geopackage_per_kei/NN.gpkg`（中間 `.step1.tmp.gpkg` は削除）。
 
 ## 実行例（リポジトリルートで）
 

@@ -66,7 +66,7 @@
 | 階層 | 意味 | 主な手段 |
 |------|------|----------|
 | **A** トレーサビリティ | どの RAW バッチ・ジョブがどの PMTiles か | 入力一覧のハッシュ／件数ログ、**ビルド ID・日時**を `docs/` 等に残す |
-| **B** 件数・範囲 | RAW と GPKG 各段・PMTiles メタの**論理的一貫性** | **10** でベースライン、**20**（SHP 件数の自動照合）、**30**（補助・現状はリング走査）、**42**（ogrinfo による目視）、**50**（PMTiles 環境スモーク） |
+| **B** 件数・範囲 | RAW と GPKG 各段・PMTiles メタの**論理的一貫性** | **10** でベースライン、**20**（変換時の SHP 件数照合）、**30**（同じ突合の再実行・監査）、**42**（ogrinfo による目視）、**50**（PMTiles 環境スモーク） |
 | **C** 座標・CRS | Y/X 列・EPSG・bbox | **42**（ogrinfo）、MapLibre で位置合わせ |
 | **D** 属性 | 代表属性・主キー相当のサンプル | **42**（手動）、必要なら RAW 行 ID と GPKG の対応表 |
 | **E** タイル化差分の明示 | 45 の一般化・drop・ズームで件数・形状が変わり得る | README／`docs/` に**意図した差分**を記載。説明なきずれは不具合候補 |
@@ -111,7 +111,7 @@
 ### 4.1 検証とフィードバックループ（確定）
 
 - **ゲート方式**: **10 → 20/25 → 30 → 40 → 42 → 45 → 50 → MapLibre 検図**の各後で、**整合が取れるまで次工程に進まない**（運用上の省略は可）。
-- **30 の意味**: 「マージ（40）直前の**トポロジ検査（閉じていないリング等）**」ではない。**RAW と GPKG の論理整合**（件数・面積）が品質の軸。**SHP 経路のフィーチャ件数の自動照合は `20-shp2geopackage.sh` 末尾の `verify_gpkg_vs_shp` が実施**。`30-check-geopackage.sh` の**現行実装**は `kozu_merged` のリング未閉合列挙（補助）に留まる。面積の自動突合は未実装。
+- **30 の意味**: 「マージ（40）直前の**トポロジ検査（閉じていないリング等）**」ではない。**RAW 公図 SHP と `geopackage_per_kei` のフィーチャ件数突合**（`30-check-geopackage.sh`）。`20` の `verify_gpkg_vs_shp` と同じ前提で、変換後の成果物を再確認できる。面積の自動突合は未実装。
 - **NG 時**: `docs/` に原因を記録し、**当該段より前に戻ってやり直す**。悪い GPKG／PMTiles を次へ渡さない。
 
 | 検証 NG | 主な戻り先 |
@@ -129,7 +129,7 @@
 flowchart TD
   A["10 プレビュー・RAW ベースライン"]
   B["20 / 25 変換 → data/03-geopackage"]
-  C{"30 個別 GPKG（補助チェック）"}
+  C{"30 SHP↔GPKG 件数"}
   D["40 マージ → data/04-merge-geopackage"]
   E{"42 統合 GPKG（ogrinfo 目視）"}
   F["45 GPKG→PMTiles（既定は 04 横置き）"]
@@ -161,7 +161,7 @@ flowchart TD
 | **10** | `10-data-preview.sh` | `data/01-raw-data` | ベースライン（件数・構造・処理区分）。変換しない |
 | **20** | `20-shp2geopackage.sh` | SHP→個別 GPKG | 変換。**`zure` / `14jyo` で `verify_gpkg_vs_shp`（SHP 合計 vs GPKG 件数）**。マージ・PMTiles なし |
 | **25** | `25-csv2geopackage.sh` | CSV→個別 GPKG | データセット別に `csv2geopackage/` へ出力 |
-| **30** | `30-check-geopackage.sh` | 個別 GPKG | **計画**: 整合確認ゲート。**実装**: `kozu_merged` のリング未閉合列挙（補助）。件数の主たる自動照合は **20**（SHP 経路） |
+| **30** | `30-check-geopackage.sh` | 個別 GPKG | **RAW 公図 SHP と `geopackage_per_kei` の件数突合**（ogrinfo）。`20` の verify と同じ観点を後から再確認可能 |
 | **40** | `40-merge-geopackage.sh` | `04-merge-geopackage/` | 用途別マージ（`zure` は系別 GPKG を 1 本化） |
 | **42** | `42-check-merge-geopackage.sh` | 統合 GPKG | **ogrinfo** 先頭部の表示（目視）。合格判定ロジックなし |
 | **45** | `45-geopackage2pmtiles.sh` | 1 本の GPKG | **既定は** `04-merge-geopackage` 内に `.pmtiles` を**同階層出力**。Parquet 経由フォールバックあり |
@@ -176,7 +176,7 @@ flowchart TD
 |----|------|--------|------|
 | 1 | プレビュー | `01-raw-data-preview` / `data/02-raw-data-preview` | プレビュー・明細作成 |
 | 2 | 変換 | 20/25 → `data/03-geopackage` | 個別 GPKG |
-| 3 | 検証 | **30** | 個別 GPKG の補助チェック（現状はリング走査） |
+| 3 | 検証 | **30** | 個別 GPKG の SHP↔GPKG 件数突合 |
 | 4 | マージ | **40** → `data/04-merge-geopackage` | 統合 GPKG |
 | 5 | 検証 | **42** | 統合 GPKG の ogrinfo 目視 |
 | 6 | PMTiles | **45** | 既定は **`04-merge-geopackage/*.pmtiles`**（入力 GPKG と同じディレクトリ）。`05-pmtiles` へコピーする運用は任意 |
