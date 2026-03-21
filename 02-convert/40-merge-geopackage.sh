@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # 個別 GPKG（data/03-geopackage/csv2geopackage）を用途別にマージし data/04-merge-geopackage に出力する。
+# zure: ずれまっぷ（20-shp2geopackage.sh zure）の geopackage_per_kei（01.gpkg…15.gpkg）を 1 本の公図と現況のずれデータ_merged.gpkg に統合。
 # 旧 HandsOn の merge_tochi / merge_gaiku / merge_toshi / merge_kozu を順に実行相当。
-# 使い方: bash 02-convert/40-merge-geopackage.sh [tochi|gaiku|toshi|kozu|all]
+# 使い方: bash 02-convert/40-merge-geopackage.sh [tochi|gaiku|toshi|kozu|zure|all]
 # 前提: PATH 上に ogr2ogr。GDAL のビルドは行わない。
 
 set -e
@@ -15,6 +16,11 @@ cd "$REPO_ROOT"
 if ! command -v ogr2ogr &>/dev/null; then
   echo "Error: ogr2ogr が PATH にありません。" >&2
   exit 1
+fi
+
+OGR2OGR_MV=()
+if [[ "${OGR2OGR_NO_MAKEVALID:-0}" != "1" ]]; then
+  OGR2OGR_MV=( -makevalid )
 fi
 
 merge_tochi() {
@@ -171,12 +177,48 @@ merge_kozu() {
   echo "merge_kozu: $NUM sources -> $OUTPUT_FILE"
 }
 
+# 20-shp2geopackage.sh zure の geopackage_per_kei を全系 1 レイヤに結合（ZURE_PER_KEI_DIR で明示、省略時は最新 run_zure* を使用）
+merge_zure_per_kei() {
+  local INPUT_DIR="${ZURE_PER_KEI_DIR:-}"
+  local shp2g="$REPO_ROOT/data/03-geopackage/shp2geopackage"
+  if [[ -z "$INPUT_DIR" || ! -d "$INPUT_DIR" ]]; then
+    local latest
+    latest=$(ls -td "$shp2g"/run_zure* 2>/dev/null | head -1)
+    if [[ -n "$latest" && -d "$latest/geopackage_per_kei" ]]; then
+      INPUT_DIR="$latest/geopackage_per_kei"
+    fi
+  fi
+  if [[ ! -d "$INPUT_DIR" ]]; then
+    echo "skip zure: geopackage_per_kei なし（先に 20-shp2geopackage.sh zure、または ZURE_PER_KEI_DIR=... を指定）" >&2
+    return 0
+  fi
+  local OUTPUT_FILE="$G4/公図と現況のずれデータ_merged.gpkg"
+  local LAYER_NAME="kozu_merged"
+  mkdir -p "$G4"
+  rm -f "$OUTPUT_FILE"
+  local first=1
+  local k
+  for k in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15; do
+    local src="$INPUT_DIR/${k}.gpkg"
+    [[ ! -f "$src" ]] && continue
+    if [[ $first -eq 1 ]]; then
+      ogr2ogr "${OGR2OGR_MV[@]}" -f GPKG -nln "$LAYER_NAME" "$OUTPUT_FILE" "$src" "$LAYER_NAME" 2>&1
+      first=0
+    else
+      ogr2ogr "${OGR2OGR_MV[@]}" -update -append -nln "$LAYER_NAME" "$OUTPUT_FILE" "$src" "$LAYER_NAME" 2>&1
+    fi
+  done
+  [[ -f "$OUTPUT_FILE" ]] || { echo "Error: merge_zure_per_kei: 出力できませんでした: $INPUT_DIR" >&2; return 1; }
+  echo "merge_zure_per_kei: $INPUT_DIR -> $OUTPUT_FILE"
+}
+
 MODE="${1:-all}"
 case "$MODE" in
   tochi) merge_tochi ;;
   gaiku) merge_gaiku ;;
   toshi) merge_toshi ;;
   kozu) merge_kozu ;;
+  zure) merge_zure_per_kei ;;
   all)
     merge_tochi
     merge_gaiku
@@ -184,7 +226,7 @@ case "$MODE" in
     merge_kozu
     ;;
   *)
-    echo "Usage: $0 [tochi|gaiku|toshi|kozu|all]" >&2
+    echo "Usage: $0 [tochi|gaiku|toshi|kozu|zure|all]" >&2
     exit 1
     ;;
 esac

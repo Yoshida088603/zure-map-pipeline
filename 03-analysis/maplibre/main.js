@@ -100,16 +100,16 @@ map.on('load', () => {
   });
 
   // PMTiles（公図と現況のずれデータ・マージ済み）。ずれ量 = ランク(前) - ずれ(前) = BFR_RANK - BFR_GOSA で色分け
-  var zuzaPmtilesUrl = DATA + '/04-merge-geopackage/公図と現況のずれデータ_merged.pmtiles';
-  map.addSource('pmtiles_zuza', {
+  var zurePmtilesUrl = DATA + '/04-merge-geopackage/公図と現況のずれデータ_merged.pmtiles';
+  map.addSource('pmtiles_zure', {
     type: 'vector',
-    url: 'pmtiles://' + zuzaPmtilesUrl,
+    url: 'pmtiles://' + zurePmtilesUrl,
   });
   // ずれ量（m）で5段階: 10cm未満 / 10cm〜30cm / 30cm〜1m / 1m〜10m / 10m以上 → 表の色
   map.addLayer({
-    id: 'pmtiles_zuza_fill',
+    id: 'pmtiles_zure_fill',
     type: 'fill',
-    source: 'pmtiles_zuza',
+    source: 'pmtiles_zure',
     'source-layer': 'kozu_merged',
     filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
     paint: {
@@ -400,16 +400,16 @@ map.on('click', 'pmtiles_toshi_merged_circle', (e) => {
 });
 
 // 公図と現況のずれデータ・ポリゴンクリック時: 全属性＋ずれ量（ランク前−ずれ前）を表示
-var zuzaLabel = { id: 'ID', ooaza: '大字', koaza: '小字', chiban: '地番', jyotai: '状態', zumen: '図面', PREFCODE: '都道府県コード', CITYCODE: '市区町村コード', BFR_GOSA: 'ずれ(前)', BFR_RANK: 'ランク(前)', AFT_GOSA: 'ずれ(後)', AFT_RANK: 'ランク(後)' };
-map.on('click', 'pmtiles_zuza_fill', (e) => {
+var zureLabel = { id: 'ID', ooaza: '大字', koaza: '小字', chiban: '地番', jyotai: '状態', zumen: '図面', PREFCODE: '都道府県コード', CITYCODE: '市区町村コード', BFR_GOSA: 'ずれ(前)', BFR_RANK: 'ランク(前)', AFT_GOSA: 'ずれ(後)', AFT_RANK: 'ランク(後)' };
+map.on('click', 'pmtiles_zure_fill', (e) => {
   var lng = e.lngLat.lng.toFixed(6);
   var lat = e.lngLat.lat.toFixed(6);
   var p = e.features[0].properties;
   var bfrR = p.BFR_RANK != null ? Number(p.BFR_RANK) : null;
   var bfrG = p.BFR_GOSA != null ? Number(p.BFR_GOSA) : null;
-  var zuzaRy = (bfrR != null && bfrG != null) ? (bfrR - bfrG).toFixed(3) : '—';
-  var p2 = Object.assign({}, p, { zura_ryo: zuzaRy });
-  var lab = Object.assign({}, zuzaLabel, { zura_ryo: 'ずれ量（ランク前−ずれ前）' });
+  var zureRy = (bfrR != null && bfrG != null) ? (bfrR - bfrG).toFixed(3) : '—';
+  var p2 = Object.assign({}, p, { zura_ryo: zureRy });
+  var lab = Object.assign({}, zureLabel, { zura_ryo: 'ずれ量（ランク前−ずれ前）' });
   showAttributePanel('公図と現況のずれ', lng, lat, p2, lab, '公図と現況のずれ_属性');
 });
 

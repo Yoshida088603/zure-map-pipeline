@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# 個別 GPKG の検査（閉じていないリング検出）。旧 check_unclosed_rings.py を埋め込み。
+# 個別 GPKG の検査。パイプライン上の品質の主眼は RAW（SHP）と GPKG の整合（ポリゴン数・面積の一致）。
+# 下記の埋め込み Python は旧 check_unclosed_rings 由来の補助スキャン（リング未閉合の列挙）であり、主ゲートの定義ではない。
 # 使い方: bash 02-convert/30-check-geopackage.sh [入力GPKGまたはディレクトリ] [出力CSV]
-# 既定: data/03-geopackage/shp2geopackage/zuza-work/geopackage_マージ前 があればそれ、なければ data/03-geopackage/csv2geopackage
+# 既定: data/03-geopackage/shp2geopackage/run_zure*/geopackage_per_kei（最新の run ディレクトリ）、なければ csv2geopackage
 # 出力CSV既定: data/02-raw-data-preview/閉じていないリング一覧.csv
 # 前提: python3 + osgeo.ogr。GDAL ビルドは行わない。
 
@@ -94,9 +95,22 @@ def scan_gpkg(gpkg_path, layer_name, source_name, results, stats):
 
 def main():
     rr = os.environ.get("REPO_ROOT", "")
-    zuza = os.path.join(rr, "data", "03-geopackage", "shp2geopackage", "zuza-work", "geopackage_マージ前")
     alt = os.path.join(rr, "data", "03-geopackage", "csv2geopackage")
-    default_in = zuza if os.path.isdir(zuza) else alt
+    shp2g = os.path.join(rr, "data", "03-geopackage", "shp2geopackage")
+    default_in = alt
+    if os.path.isdir(shp2g):
+        import glob
+        runs = sorted(
+            glob.glob(os.path.join(shp2g, "run_zure*", "geopackage_per_kei")),
+            key=os.path.getmtime,
+            reverse=True,
+        )
+        if runs:
+            default_in = runs[0]
+        else:
+            legacy = os.path.join(shp2g, "zure-work", "geopackage_マージ前")
+            if os.path.isdir(legacy):
+                default_in = legacy
     default_csv = os.path.join(rr, "data", "02-raw-data-preview", "閉じていないリング一覧.csv")
     inp = sys.argv[1] if len(sys.argv) > 1 else default_in
     out_csv = sys.argv[2] if len(sys.argv) > 2 else default_csv
@@ -130,7 +144,7 @@ def main():
         w.writeheader()
         w.writerows(results)
     print("")
-    print("=== 閉じていないリング サマリ ===")
+    print("=== 補助スキャン: 閉じていないリング（主品質は SHP↔GPKG の件数・面積の突合。20 の verify_gpkg_vs_shp 等）===")
     print("  対象: {}".format(inp))
     print("  スキャンしたポリゴン総数: {} 件".format(n_total))
     print("  閉じているポリゴン数: {} 件".format(n_closed))

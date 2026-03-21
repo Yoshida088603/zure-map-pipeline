@@ -61,14 +61,14 @@
 
 ### 3.2 「RAW ↔ PMTiles 整合」の定義
 
-ベクタタイルは一般化等により**生データとバイト一致はしない**のが普通。本計画では次の**階層**で揃え、**10 → 30 → 42 → 50 → MapLibre** で照合する。
+ベクタタイルは一般化等により**生データとバイト一致はしない**のが普通。本計画では次の**階層**で揃え、**10 → 20/25 → 30 → 40 → 42 → 45 → 50 → MapLibre** の順で照合する（番号の詳細は §4）。
 
 | 階層 | 意味 | 主な手段 |
 |------|------|----------|
 | **A** トレーサビリティ | どの RAW バッチ・ジョブがどの PMTiles か | 入力一覧のハッシュ／件数ログ、**ビルド ID・日時**を `docs/` 等に残す |
-| **B** 件数・範囲 | RAW と GPKG 各段・PMTiles メタの**論理的一貫性** | **10** でベースライン、**30/42** で突合、**50** で PMTiles 読み取り |
-| **C** 座標・CRS | Y/X 列・EPSG・bbox | **30/42**、MapLibre で位置合わせ |
-| **D** 属性 | 代表属性・主キー相当のサンプル | **30**、必要なら RAW 行 ID と GPKG の対応表 |
+| **B** 件数・範囲 | RAW と GPKG 各段・PMTiles メタの**論理的一貫性** | **10** でベースライン、**20**（SHP 件数の自動照合）、**30**（補助・現状はリング走査）、**42**（ogrinfo による目視）、**50**（PMTiles 環境スモーク） |
+| **C** 座標・CRS | Y/X 列・EPSG・bbox | **42**（ogrinfo）、MapLibre で位置合わせ |
+| **D** 属性 | 代表属性・主キー相当のサンプル | **42**（手動）、必要なら RAW 行 ID と GPKG の対応表 |
 | **E** タイル化差分の明示 | 45 の一般化・drop・ズームで件数・形状が変わり得る | README／`docs/` に**意図した差分**を記載。説明なきずれは不具合候補 |
 | **F** 可視化 | 人間による検図 | MapLibre + `06-analysis-result` |
 
@@ -110,7 +110,8 @@
 
 ### 4.1 検証とフィードバックループ（確定）
 
-- **ゲート方式**: **10 → 30 → 42 → 50 → MapLibre 検図**の各後で、**整合が取れるまで次工程に進まない**。
+- **ゲート方式**: **10 → 20/25 → 30 → 40 → 42 → 45 → 50 → MapLibre 検図**の各後で、**整合が取れるまで次工程に進まない**（運用上の省略は可）。
+- **30 の意味**: 「マージ（40）直前の**トポロジ検査（閉じていないリング等）**」ではない。**RAW と GPKG の論理整合**（件数・面積）が品質の軸。**SHP 経路のフィーチャ件数の自動照合は `20-shp2geopackage.sh` 末尾の `verify_gpkg_vs_shp` が実施**。`30-check-geopackage.sh` の**現行実装**は `kozu_merged` のリング未閉合列挙（補助）に留まる。面積の自動突合は未実装。
 - **NG 時**: `docs/` に原因を記録し、**当該段より前に戻ってやり直す**。悪い GPKG／PMTiles を次へ渡さない。
 
 | 検証 NG | 主な戻り先 |
@@ -128,11 +129,11 @@
 flowchart TD
   A["10 プレビュー・RAW ベースライン"]
   B["20 / 25 変換 → data/03-geopackage"]
-  C{"30 個別 GPKG 検証"}
+  C{"30 個別 GPKG（補助チェック）"}
   D["40 マージ → data/04-merge-geopackage"]
-  E{"42 統合 GPKG 検証"}
-  F["45 PMTiles → data/05-pmtiles"]
-  G{"50 PMTiles 検証"}
+  E{"42 統合 GPKG（ogrinfo 目視）"}
+  F["45 GPKG→PMTiles（既定は 04 横置き）"]
+  G{"50 PMTiles 環境スモーク"}
   H["MapLibre 検図 serve.py"]
   Z(["完了"])
 
@@ -153,16 +154,20 @@ flowchart TD
   H -->|NG 表示| H
 ```
 
-### 4.3 検証の担当（スクリプト番号）
+### 4.3 番号付きスクリプトと役割（実装ベース）
 
-| 番号 | スクリプト（案） | 対象 | 内容の例 |
-|------|------------------|------|----------|
-| **10** | `10-data-preview.sh` | `data/01-raw-data` | ベースライン（件数・CRS・主キー・bbox 等） |
-| **30** | `30-check-geopackage.sh` | 個別 GPKG | 10 との突合、CRS、閉じていないポリゴン、属性検証 |
-| **42** | `42-check-merge-geopackage.sh` | 統合 GPKG | 件数・レイヤ・投影・bbox（定義 E の文書化含む） |
-| **50** | `50-check-pmtiles.sh` | PMTiles | メタ・Range・書き込み、GPKG との論理照合、定義 E との整合 |
+| 番号 | スクリプト | 対象 | 実際の役割 |
+|------|------------|------|------------|
+| **10** | `10-data-preview.sh` | `data/01-raw-data` | ベースライン（件数・構造・処理区分）。変換しない |
+| **20** | `20-shp2geopackage.sh` | SHP→個別 GPKG | 変換。**`zure` / `14jyo` で `verify_gpkg_vs_shp`（SHP 合計 vs GPKG 件数）**。マージ・PMTiles なし |
+| **25** | `25-csv2geopackage.sh` | CSV→個別 GPKG | データセット別に `csv2geopackage/` へ出力 |
+| **30** | `30-check-geopackage.sh` | 個別 GPKG | **計画**: 整合確認ゲート。**実装**: `kozu_merged` のリング未閉合列挙（補助）。件数の主たる自動照合は **20**（SHP 経路） |
+| **40** | `40-merge-geopackage.sh` | `04-merge-geopackage/` | 用途別マージ（`zure` は系別 GPKG を 1 本化） |
+| **42** | `42-check-merge-geopackage.sh` | 統合 GPKG | **ogrinfo** 先頭部の表示（目視）。合格判定ロジックなし |
+| **45** | `45-geopackage2pmtiles.sh` | 1 本の GPKG | **既定は** `04-merge-geopackage` 内に `.pmtiles` を**同階層出力**。Parquet 経由フォールバックあり |
+| **50** | `50-check-pmtiles.sh` | GDAL 環境 | PMTiles ドライバ登録と**最小**書き出しテスト。本番 GPKG との突合なし |
 
-- **45** `45-geopackage2pmtiles.sh`: タイル化**オプション**を README／`docs/` に残し、50 で判定可能にする。
+- **MapLibre** `serve.py`: PMTiles の Range 配信。参照パスは `main.js` 設定（`04-merge-geopackage` や `05-pmtiles` のどちらでも可）。
 - **スモーク**（1 件 E2E）は主幹外。**任意**で `02-convert/scripts-smoke/` 等に `single_csv_to_pmtiles.sh` 相当を記載。
 
 ### 4.4 段階一覧と補足
@@ -171,11 +176,11 @@ flowchart TD
 |----|------|--------|------|
 | 1 | プレビュー | `01-raw-data-preview` / `data/02-raw-data-preview` | プレビュー・明細作成 |
 | 2 | 変換 | 20/25 → `data/03-geopackage` | 個別 GPKG |
-| 3 | 検証 | **30** | 個別 GPKG |
+| 3 | 検証 | **30** | 個別 GPKG の補助チェック（現状はリング走査） |
 | 4 | マージ | **40** → `data/04-merge-geopackage` | 統合 GPKG |
-| 5 | 検証 | **42** | 統合 GPKG |
-| 6 | PMTiles | **45** → `data/05-pmtiles` | 定義 E を文書化 |
-| 7 | 検証 | **50** | 定義 A〜E |
+| 5 | 検証 | **42** | 統合 GPKG の ogrinfo 目視 |
+| 6 | PMTiles | **45** | 既定は **`04-merge-geopackage/*.pmtiles`**（入力 GPKG と同じディレクトリ）。`05-pmtiles` へコピーする運用は任意 |
+| 7 | 検証 | **50** | PMTiles **環境**スモーク（ドライバ・最小書き出し） |
 | 8 | MapLibre | `03-analysis/maplibre` + `serve.py` | 定義 F、`06-analysis-result` |
 
 **HandsOn 側との差分で決めること**
