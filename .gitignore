@@ -1,0 +1,47 @@
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# --- Python（venv はリポジトリに含めない）---
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- 秘密・ローカル設定 ---
+.env
+.env.*
+!.env.example
+
+# --- GDAL / ジオ作業の一時ファイル ---
+*.tmp
+*.aux.xml
+
+# --- data: RAW（DVD 複製）・ラスタ（原則 Git 外。構造だけ .gitkeep）---
+data/01-raw-data/**
+!data/01-raw-data/.gitkeep
+data/07-rasters/**
+!data/07-rasters/.gitkeep
+
+# --- data: 中間〜成果（巨大・生成物。小さな README / .md / .geojson はコミット可）---
+data/**/*.gpkg
+data/**/*.pmtiles
+data/**/*.mbtiles
+data/**/*.tif
+data/**/*.tiff
+data/**/*.zip
+data/**/*.7z
+data/**/*.parquet
+data/**/*.shp
+data/**/*.dbf
+data/**/*.shx
+data/**/*.prj
+data/**/*.cpg
