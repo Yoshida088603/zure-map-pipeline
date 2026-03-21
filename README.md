@@ -11,13 +11,16 @@
 
 ## 前提
 
-- **GDAL**: `ogr2ogr` / `ogrinfo` が **PATH で利用可能**であること（ビルド手順は本 README では扱いません）。
+- **GDAL**: `ogr2ogr` / `ogrinfo` が **PATH で利用可能**であること（ビルド手順は本 README では扱いません）。`10-data-preview.sh` の **SHP フィーチャ数**は `ogrinfo` が必要です（未導入時はスキップ）。
 - **Python 3**: `25-csv2geopackage.sh` と `30-check-geopackage.sh`（`osgeo.ogr`）で使用。
 
 ## 実行例（リポジトリルートで）
 
 ```bash
+# RAW ベースライン（ディレクトリ構造・件数、ずれまっぷ/14条/基準点CSV の処理区分明示・任意で ogrinfo）
+# 出力: data/02-raw-data-preview/raw_data_preview_YYYYMMDD_HHMMSS.txt（分析結果・毎回新規）
 bash 01-raw-data-preview/10-data-preview.sh
+# 全 CSV 行数まで取る場合（重い）: RAW_PREVIEW_CSV_LINES=1 bash 01-raw-data-preview/10-data-preview.sh
 bash 02-convert/25-csv2geopackage.sh -s
 bash 02-convert/40-merge-geopackage.sh all
 bash 02-convert/45-geopackage2pmtiles.sh

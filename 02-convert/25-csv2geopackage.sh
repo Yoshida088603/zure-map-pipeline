@@ -244,6 +244,7 @@ if [[ -d "$IN_DIR" ]]; then
       FAILED=1
       continue
     fi
+    # JGD2011 平面直角: 6668 は地理座標。n 系は 6668+n（9系=6677 等）。16〜19 系は EPSG に XVI〜XIX あり
     EPSG=$((6668 + ZONE))
     if ! ogr2ogr -skipfailures -f GPKG -nlt POINT \
       -s_srs "EPSG:$EPSG" -t_srs EPSG:3857 \

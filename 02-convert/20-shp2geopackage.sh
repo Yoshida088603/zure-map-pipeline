@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # Shapefile 系パイプライン（旧: run_pipeline.sh / run_pipeline_14jyo.sh / run_pipeline_zuza_origin.sh）。
+# GPKG: 件数ズレの主因は「無効ジオメトリ等でコピー失敗 → -skipfailures で黙ってスキップ」。
+# 対策: ogr2ogr に -makevalid（GEOS）を付けて書き込み可能な形状に直し、GPKG へのコピーでは -skipfailures を使わない。
+# 終了時に SHP 合計と GPKG の featureCount を照合し、不一致なら exit 1（原因調査のため）。
+# 照合を省略する場合: VERIFY_GPKG_COUNT=0  /  MakeValid を無効にする場合: OGR2OGR_NO_MAKEVALID=1（非推奨）
+# DBF 文字化けは VRT 側の OpenOptions（zuza）などで調整。
 # 使い方: bash 02-convert/20-shp2geopackage.sh [sample|14jyo|zuza|all]
 # - sample: data/03-geopackage/shp2geopackage/input の *.shp → data/05-pmtiles/shp-sample-out（Parquet/FGB/PMTiles）
 # - 14jyo:  RAW の 14条地図 フォルダ内の全 SHP を 1 GPKG + PMTiles（data/05-pmtiles）
@@ -19,6 +24,54 @@ for cmd in ogr2ogr ogrinfo; do
     exit 1
   fi
 done
+
+# GPKG 書き込み時のジオメトリ修復（GEOS 必須。ビルドに無いと ogr2ogr が失敗する）
+OGR2OGR_MV=()
+if [[ "${OGR2OGR_NO_MAKEVALID:-0}" != "1" ]]; then
+  OGR2OGR_MV=( -makevalid )
+fi
+
+# ogrinfo -json の featureCount 合計（第2引数でレイヤ名を指定可）
+sum_ogrjson_feature_count() {
+  if [[ -n "${2:-}" ]]; then
+    ogrinfo -json "$1" "$2" 2>/dev/null \
+      | grep -o '"featureCount":[0-9][0-9]*' \
+      | sed 's/.*://' \
+      | awk '{ s += $1 } END { print s + 0 }'
+  else
+    ogrinfo -json "$1" 2>/dev/null \
+      | grep -o '"featureCount":[0-9][0-9]*' \
+      | sed 's/.*://' \
+      | awk '{ s += $1 } END { print s + 0 }'
+  fi
+}
+
+# SHP パスの列を合算
+sum_shp_paths_features() {
+  local sum=0 f fc
+  for f in "$@"; do
+    [[ -f "$f" ]] || continue
+    fc=$(sum_ogrjson_feature_count "$f")
+    sum=$((sum + fc))
+  done
+  echo "$sum"
+}
+
+# GPKG の指定レイヤの featureCount
+gpkg_layer_feature_count() {
+  sum_ogrjson_feature_count "$1" "$2"
+}
+
+# 件数照合（VERIFY_GPKG_COUNT=0 でスキップ）
+verify_gpkg_vs_shp() {
+  local tag="$1" expected="$2" actual="$3"
+  [[ "${VERIFY_GPKG_COUNT:-1}" == "0" ]] && return 0
+  echo "[件数照合 ${tag}] SHP 合計=${expected}  GPKG=${actual}"
+  if [[ -z "$actual" || "$expected" != "$actual" ]]; then
+    echo "Error: ${tag} で GPKG のフィーチャ数が SHP と一致しません。ogr2ogr の直前ログ、または OGR2OGR_NO_MAKEVALID=1 で再現確認。" >&2
+    exit 1
+  fi
+}
 
 run_sample() {
   local INPUT_DIR="$REPO_ROOT/data/03-geopackage/shp2geopackage/input"
@@ -95,6 +148,7 @@ run_14jyo() {
     local path="$1"
     if [[ "$path" =~ ([0-9]+)系 ]]; then
       local n="${BASH_REMATCH[1]}"
+      # JGD2011 平面直角: EPSG:6668 は地理座標。投影の n 系は EPSG:6668+n（1系=6669 … 9系=6677 … 15系=6683）
       if [[ "$n" -ge 1 && "$n" -le 19 ]]; then
         echo "EPSG:$((6668 + n))"
         return
@@ -105,19 +159,23 @@ run_14jyo() {
   local S_SRS0
   S_SRS0=$(get_s_srs_for_shp "${SHPS[0]}")
   if [[ -n "$S_SRS0" ]]; then
-    ogr2ogr -skipfailures -s_srs "$S_SRS0" -t_srs "$T_SRS" -f GPKG -nln "$LAYER_NAME" "$MERGE_GPKG" "${SHPS[0]}" 2>&1
+    ogr2ogr "${OGR2OGR_MV[@]}" -s_srs "$S_SRS0" -t_srs "$T_SRS" -f GPKG -nln "$LAYER_NAME" "$MERGE_GPKG" "${SHPS[0]}" 2>&1
   else
-    ogr2ogr -skipfailures -t_srs "$T_SRS" -f GPKG -nln "$LAYER_NAME" "$MERGE_GPKG" "${SHPS[0]}" 2>&1
+    ogr2ogr "${OGR2OGR_MV[@]}" -t_srs "$T_SRS" -f GPKG -nln "$LAYER_NAME" "$MERGE_GPKG" "${SHPS[0]}" 2>&1
   fi
   local i S_SRS
   for (( i=1; i<NUM_SHPS; i++ )); do
     S_SRS=$(get_s_srs_for_shp "${SHPS[$i]}")
     if [[ -n "$S_SRS" ]]; then
-      ogr2ogr -skipfailures -s_srs "$S_SRS" -t_srs "$T_SRS" -update -append -nln "$LAYER_NAME" "$MERGE_GPKG" "${SHPS[$i]}" 2>&1 || true
+      ogr2ogr "${OGR2OGR_MV[@]}" -s_srs "$S_SRS" -t_srs "$T_SRS" -update -append -nln "$LAYER_NAME" "$MERGE_GPKG" "${SHPS[$i]}" 2>&1
     else
-      ogr2ogr -skipfailures -t_srs "$T_SRS" -update -append -nln "$LAYER_NAME" "$MERGE_GPKG" "${SHPS[$i]}" 2>&1 || true
+      ogr2ogr "${OGR2OGR_MV[@]}" -t_srs "$T_SRS" -update -append -nln "$LAYER_NAME" "$MERGE_GPKG" "${SHPS[$i]}" 2>&1
     fi
   done
+  local exp14 act14
+  exp14=$(sum_shp_paths_features "${SHPS[@]}")
+  act14=$(gpkg_layer_feature_count "$MERGE_GPKG" "$LAYER_NAME")
+  verify_gpkg_vs_shp "14条地図_merge.gpkg" "$exp14" "$act14"
   ogr2ogr -skipfailures -nlt PROMOTE_TO_MULTI -dsco MINZOOM=0 -dsco MAXZOOM=15 -f "PMTiles" \
     "$OUTPUT_PMTILES" "$MERGE_GPKG" "$LAYER_NAME" 2>&1 || true
   echo "14jyo done -> $OUTPUT_PMTILES"
@@ -151,6 +209,7 @@ run_zuza() {
     fi
   done
   mkdir -p "$DIR_MERGE_BEFORE" "$DIR_MERGE_AFTER" "$DIR_PMTILES"
+  # RAW「公図と現況のずれデータ」直下の 01〜15（2桁）= 平面直角 1系〜15系（01=1系 … 15=15系）。→ 系番号 n に JGD2011 投影 EPSG:6668+n
   local KEI_LIST=()
   local k
   for k in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15; do
@@ -185,11 +244,9 @@ run_zuza() {
       echo '  </OGRVRTUnionLayer>'
       echo '</OGRVRTDataSource>'
     } > "$vrt"
-    if ! ogr2ogr -skipfailures -t_srs "$T_SRS" -f GPKG -nln "$LAYER_NAME" "$out_gpkg" "$vrt" 2>&1; then
-      rm -f "$out_gpkg" "$vrt"
-      continue
-    fi
+    ogr2ogr "${OGR2OGR_MV[@]}" -t_srs "$T_SRS" -f GPKG -nln "$LAYER_NAME" "$out_gpkg" "$vrt" 2>&1
     rm -f "$vrt"
+    [[ -f "$out_gpkg" ]] || continue
   done
   local MERGE_GPKG="$DIR_MERGE_AFTER/公図と現況のずれデータ_merged.gpkg"
   rm -f "$MERGE_GPKG"
@@ -198,13 +255,23 @@ run_zuza() {
     local src="$DIR_MERGE_BEFORE/${k}.gpkg"
     [[ ! -f "$src" ]] && continue
     if [[ $first -eq 1 ]]; then
-      ogr2ogr -skipfailures -f GPKG -nln "$LAYER_NAME" "$MERGE_GPKG" "$src" "$LAYER_NAME" 2>&1 || true
+      ogr2ogr "${OGR2OGR_MV[@]}" -f GPKG -nln "$LAYER_NAME" "$MERGE_GPKG" "$src" "$LAYER_NAME" 2>&1
       first=0
     else
-      ogr2ogr -skipfailures -update -append -nln "$LAYER_NAME" "$MERGE_GPKG" "$src" "$LAYER_NAME" 2>&1 || true
+      ogr2ogr "${OGR2OGR_MV[@]}" -update -append -nln "$LAYER_NAME" "$MERGE_GPKG" "$src" "$LAYER_NAME" 2>&1
     fi
   done
   [[ -f "$MERGE_GPKG" ]] || { echo "Error: merge gpkg missing" >&2; exit 1; }
+  local exp_zu act_zu
+  exp_zu=0
+  local fsum fc
+  while IFS= read -r -d '' fsum; do
+    [[ -f "$fsum" ]] || continue
+    fc=$(sum_ogrjson_feature_count "$fsum")
+    exp_zu=$((exp_zu + fc))
+  done < <(find "$ORIGIN_ROOT" -path "*/公図/*" -name "*.shp" -print0 2>/dev/null)
+  act_zu=$(gpkg_layer_feature_count "$MERGE_GPKG" "$LAYER_NAME")
+  verify_gpkg_vs_shp "公図と現況のずれデータ_merged.gpkg" "$exp_zu" "$act_zu"
   local OUTPUT_PMTILES="$DIR_PMTILES/公図と現況のずれデータ_merged.pmtiles"
   ogr2ogr -skipfailures -nlt PROMOTE_TO_MULTI -dsco MINZOOM=0 -dsco MAXZOOM=15 -f "PMTiles" \
     "$OUTPUT_PMTILES" "$MERGE_GPKG" "$LAYER_NAME" 2>&1 || true

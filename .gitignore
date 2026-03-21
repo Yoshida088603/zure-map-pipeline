@@ -31,6 +31,9 @@ data/01-raw-data/**
 data/07-rasters/**
 !data/07-rasters/.gitkeep
 
+# --- data: 02 プレビュー生成ログ（10 の出力。plan §7）---
+data/02-raw-data-preview/*.txt
+
 # --- data: 中間〜成果（巨大・生成物。小さな README / .md / .geojson はコミット可）---
 data/**/*.gpkg
 data/**/*.pmtiles
