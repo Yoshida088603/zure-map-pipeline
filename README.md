@@ -16,6 +16,8 @@
 | **40** | `02-convert/40-merge-geopackage.sh` | **用途別マージ** → `data/04-merge-geopackage/`。`tochi`/`gaiku`/`toshi`/`kozu`（CSV 系）に加え、ずれまっぷ SHP 経路は **`zure`**（`20` の `geopackage_per_kei` を統合）。 |
 | **42** | `02-convert/42-check-merge-geopackage.sh` | **統合 GPKG の ogrinfo 出力**（レイヤ名・件数・投影などの**目視確認用**。自動の合格／不合格判定はしない）。 |
 | **45** | `02-convert/45-geopackage2pmtiles.sh` | **GPKG → PMTiles**。第2引数で**出力ディレクトリ**可（省略時は入力と同じ場所）。既定 **MINZOOM=0・MAXZOOM=12**（`PMTILES_MINZOOM` / `PMTILES_MAXZOOM`）。**出力ファイル名の本体**は `PMTILES_OUT_BASENAME`（省略時は入力ベース名）。`ogr2ogr` が PATH に無いとき **`GDAL_ENV_SH`** または HandsOn **`gdal-full/env.sh`** を試行。 |
+| **46a** | `02-convert/46-split-gpkg-tokyo-other.sh` | **GPKG を東京都（`PREFCODE=13`）とそれ以外に分割**（`09kei-tokyo.gpkg` / `09kei-other.gpkg` 等）。系9の PMTiles 容量対策用。`SPLIT_TOKYO_PREFCODE` で都コード変更可。 |
+| **46b** | `02-convert/46-split-gpkg-fid-half.sh` | **GPKG を FID 前後半で 2 分割**（`09kei-A` / `09kei-B`）。行政界に依らないが件数半分が確実。 |
 | **50** | `02-convert/50-check-pmtiles.sh` | **GDAL の PMTiles ドライバ登録と最小 GPKG→PMTiles 書き出し**の環境スモーク。特定の本番 GPKG／PMTiles との論理突合はしない。 |
 | （検図） | `03-analysis/maplibre/serve.py` | PMTiles を **Range 対応 HTTP** で配信。`python -m http.server` では足りない。 |
 
