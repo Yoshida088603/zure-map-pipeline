@@ -193,7 +193,8 @@ flowchart TD
 - **ビルド（`47`）**: `geopackage_per_kei/NN.gpkg` → `data/05-pmtiles/NN.pmtiles`。**タイルの最大ズームは既定 `MAXZOOM=11`**（容量・ビルド時間との兼ね合い）。`PMTILES_MAXZOOM=12` で z12 まで出すことは可能だが、**系別検図の既定運用は z11 まで**とする。
 - **表示（`main.js`・`?mode=z12`）**: 地図の **`maxZoom` は 22**（OSM ベースマップと同程度）。ベクタソースはメタデータ上 z11 までのため、**それ以降は MapLibre の overzoom**（z11 タイルの拡大表示）とする。これによりホイール／ピンチでの拡大操作が止まらない。
 - **URL 互換**: クエリ名 `?mode=z12`（および旧 `?mode=z13`）は**そのまま**（ブックマーク互換）。中身の PMTiles は z0–11。
-- **参照実装**: `03-analysis/maplibre/main.js`（系別モード分岐）、`02-convert/47-geopackage-per-kei2pmtiles.sh`。
+- **全系重畳検図**: `?mode=all-kei` で `data/05-pmtiles` の系別 PMTiles を複数ソースとして同時表示（実装は `main.js` の `ALL_KEI_PMTILES_STEMS` と一致させる）。
+- **参照実装**: `03-analysis/maplibre/main.js`（系別／全系モード分岐）、`02-convert/47-geopackage-per-kei2pmtiles.sh`。
 
 **HandsOn 側との差分で決めること**
 

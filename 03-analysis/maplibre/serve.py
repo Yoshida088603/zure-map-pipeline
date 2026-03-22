@@ -11,6 +11,7 @@ import http.server
 import io
 import os
 import re
+import subprocess
 import sys
 
 
@@ -62,13 +63,50 @@ class RangeRequestHandler(http.server.SimpleHTTPRequestHandler):
         return f
 
 
+def _first_lan_ipv4():
+    """WSL 等で Windows ブラウザから繋ぐときの候補（127 以外の最初の IPv4）。"""
+    try:
+        r = subprocess.run(
+            ["hostname", "-I"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        if r.returncode != 0 or not r.stdout:
+            return None
+        for part in r.stdout.split():
+            if part.startswith("127."):
+                continue
+            if "." in part and ":" not in part:
+                return part
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
 def run(port=8080):
     here = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.normpath(os.path.join(here, "..", ".."))
     os.chdir(repo_root)
     server = http.server.HTTPServer(("", port), RangeRequestHandler)
-    print(f"PMTiles 対応サーバー（ルート={repo_root}）: http://localhost:{port}/03-analysis/maplibre/index.html")
-    print("  系別 z0–11 検図: 上記に ?mode=z12 （互換 ?mode=z13。既定 05-pmtiles/09.pmtiles、?kei=09 または ?pmtiles=…）")
+    path = "/03-analysis/maplibre/index.html"
+    lan = _first_lan_ipv4()
+    print(f"PMTiles 対応サーバー（ルート={repo_root}）")
+    print(f"  次をコピーしてブラウザのアドレス欄に貼り付け:")
+    print(f"    http://127.0.0.1:{port}{path}")
+    if lan:
+        print(f"  WSL のとき Windows 側ブラウザで繋がらなければ:")
+        print(f"    http://{lan}:{port}{path}")
+    print("")
+    print("  全系重畳: 上に ?mode=all-kei を付ける")
+    print("  1 系のみ: ?mode=z12 （互換 ?mode=z13。?kei=09 や ?pmtiles=…）")
+    print("")
+    print(
+        "  【Cursor の Simple Browser / 組み込みプレビューで開けないとき】\n"
+        "    サーバは WSL 上で動いています。内蔵ブラウザは別環境のことがあり localhost に届きません。\n"
+        "    → Windows の Chrome / Edge / Firefox で http://127.0.0.1:ポート/... を開いてください。"
+    )
     print("Ctrl+C で停止")
     server.serve_forever()
 

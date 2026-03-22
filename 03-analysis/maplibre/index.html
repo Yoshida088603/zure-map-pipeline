@@ -5,7 +5,7 @@
     <title>MapLibre ビューア（zure-map-pipeline）</title>
     <meta
       name="description"
-      content="serve.py で配信。通常は複数レイヤー、?mode=z12 で系別 PMTiles（z0–11）のみ検図。既定 05-pmtiles/09.pmtiles。?kei=09 または ?pmtiles= で変更。?mode=z13 は互換。"
+      content="serve.py で配信。?mode=all-kei で 05-pmtiles の系別 PMTiles 全重畳。?mode=z12 で 1 系のみ。?kei=09 や ?pmtiles= で切替。?mode=z13 は互換。"
     />
     <link href="style.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -15,8 +15,10 @@
     <nav class="map-mode-bar" aria-label="表示モード">
       <a href="index.html">通常表示</a>
       <span aria-hidden="true">|</span>
-      <a href="index.html?mode=z12">系別 z0–11 検図</a>
-      <span class="map-mode-bar-hint">（<code>?mode=z12</code>・<code>?kei=09</code>・<code>?pmtiles=05-pmtiles/…</code>）</span>
+      <a href="index.html?mode=all-kei">全系 05-pmtiles 重畳</a>
+      <span aria-hidden="true">|</span>
+      <a href="index.html?mode=z12">系別 1 本（z0–11）</a>
+      <span class="map-mode-bar-hint">（<code>?mode=all-kei</code>・<code>?mode=z12</code>・<code>?kei=09</code>）</span>
     </nav>
     <div id="map"></div>
     <div id="z12-kei-hud" class="z12-kei-hud z12-kei-only"></div>

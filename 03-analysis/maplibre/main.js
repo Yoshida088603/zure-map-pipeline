@@ -10,6 +10,10 @@ var params = new URLSearchParams(location.search);
 // ?kei=09 で 05-pmtiles/09.pmtiles、?pmtiles= で任意パス（data/ からの相対）
 var _mode = params.get('mode');
 var isZ12KeiMode = _mode === 'z12' || _mode === 'z13';
+// data/05-pmtiles の系別ずれ PMTiles（47 出力）をまとめて表示
+var isAllKeiPmtilesMode = _mode === 'all-kei' || _mode === 'allkei';
+/** 現行ビルドのファイル名（14 系が無い場合はスキップ。増えたらここに追加） */
+var ALL_KEI_PMTILES_STEMS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '15'];
 var _kei = params.get('kei');
 var _keiStem = _kei && /^[0-9]{2}$/.test(_kei) ? _kei : null;
 var z12KeiPmtilesRel =
@@ -24,7 +28,7 @@ function z12KeiLogLine(msg, err) {
   }
 }
 
-if (isZ12KeiMode) {
+if (isZ12KeiMode || isAllKeiPmtilesMode) {
   document.body.classList.add('mode-z12-kei');
   window.addEventListener('error', function (ev) {
     z12KeiLogLine('window.error', ev.error || ev.message);
@@ -33,14 +37,23 @@ if (isZ12KeiMode) {
     z12KeiLogLine('unhandledrejection', ev.reason);
   });
   if (location.protocol === 'file:') {
-    z12KeiLogLine('file:// では /data が使えません。serve.py 経由の http://…/index.html?mode=z12 を開いてください');
+    z12KeiLogLine('file:// では /data が使えません。serve.py 経由の http を開いてください');
   }
   var z12Hud = document.getElementById('z12-kei-hud');
   if (z12Hud) {
-    z12Hud.textContent =
-      'PMTiles: ' +
-        z12KeiPmtilesRel +
-        '（タイル z0–11・地図は overzoom で拡大可。?kei=09 / ?pmtiles=…）';
+    if (isAllKeiPmtilesMode) {
+      z12Hud.textContent =
+        '全系: data/05-pmtiles の ' +
+        ALL_KEI_PMTILES_STEMS.length +
+        ' 本（' +
+        ALL_KEI_PMTILES_STEMS.join(', ') +
+        '）・タイル z0–11・overzoom 可';
+    } else {
+      z12Hud.textContent =
+        'PMTiles: ' +
+          z12KeiPmtilesRel +
+          '（タイル z0–11・地図は overzoom で拡大可。?kei=09 / ?pmtiles=…）';
+    }
   }
 }
 
@@ -50,8 +63,8 @@ if (isZ12KeiMode) {
 var map = new maplibregl.Map({
   container: 'map',
   style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json', // 地図のスタイル
-  center: isZ12KeiMode ? [139.45, 35.68] : [139.619109, 35.768183],
-  zoom: isZ12KeiMode ? 8 : 12,
+  center: isZ12KeiMode || isAllKeiPmtilesMode ? (isAllKeiPmtilesMode ? [137.5, 36.2] : [139.45, 35.68]) : [139.619109, 35.768183],
+  zoom: isAllKeiPmtilesMode ? 5.2 : isZ12KeiMode ? 8 : 12,
   minZoom: 0,
   maxZoom: 22,
 });
@@ -66,13 +79,51 @@ map.on('styleimagemissing', (e) => {
 
 map.on('error', (e) => {
   console.error('MapLibre error:', e);
-  if (isZ12KeiMode) {
+  if (isZ12KeiMode || isAllKeiPmtilesMode) {
     z12KeiLogLine('MapLibre map.error', e.error || e);
   }
 });
 
 // ポリゴンデータを表示する
+var keiZureFillPaint = {
+  'fill-color': [
+    'step',
+    ['coalesce', ['-', ['get', 'BFR_RANK'], ['get', 'BFR_GOSA']], -1],
+    '#cccccc',
+    0.1, '#87ceeb',
+    0.3, '#98fb98',
+    1, '#fffacd',
+    10, '#d3d3d3',
+  ],
+  'fill-opacity': 0.55,
+  'fill-outline-color': 'rgba(0,0,0,0.15)',
+};
+
+var allKeiFillLayerIds = [];
+
 map.on('load', () => {
+  if (isAllKeiPmtilesMode) {
+    ALL_KEI_PMTILES_STEMS.forEach(function (stem) {
+      var sid = 'pmtiles_kei_' + stem;
+      var lid = sid + '_fill';
+      var url = DATA + '/05-pmtiles/' + stem + '.pmtiles';
+      map.addSource(sid, {
+        type: 'vector',
+        url: 'pmtiles://' + url,
+      });
+      map.addLayer({
+        id: lid,
+        type: 'fill',
+        source: sid,
+        'source-layer': 'kozu_merged',
+        filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
+        paint: keiZureFillPaint,
+      });
+      allKeiFillLayerIds.push(lid);
+    });
+    return;
+  }
+
   if (isZ12KeiMode) {
     var z12KeiUrl = DATA + '/' + z12KeiPmtilesRel.replace(/^\//, '');
     map.addSource('pmtiles_09kei_z12', {
@@ -85,20 +136,7 @@ map.on('load', () => {
       source: 'pmtiles_09kei_z12',
       'source-layer': 'kozu_merged',
       filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
-      paint: {
-        // step は「閾値, 色」を交互に並べ、最後は必ず 閾値+色のペアで終わる（末尾に色だけ余分は不可）
-        'fill-color': [
-          'step',
-          ['coalesce', ['-', ['get', 'BFR_RANK'], ['get', 'BFR_GOSA']], -1],
-          '#cccccc',
-          0.1, '#87ceeb',
-          0.3, '#98fb98',
-          1, '#fffacd',
-          10, '#d3d3d3',
-        ],
-        'fill-opacity': 0.6,
-        'fill-outline-color': 'rgba(0,0,0,0.2)',
-      },
+      paint: Object.assign({}, keiZureFillPaint, { 'fill-opacity': 0.6 }),
     });
     return;
   }
@@ -511,5 +549,24 @@ if (isZ12KeiMode) {
     var p2 = Object.assign({}, p, { zura_ryo: zureRy });
     var lab = Object.assign({}, zureLabel, { zura_ryo: 'ずれ量（ランク前−ずれ前）' });
     showAttributePanel('公図と現況のずれ（z0–11 検図）', lng, lat, p2, lab, '公図と現況のずれ_z12_属性');
+  });
+}
+
+if (isAllKeiPmtilesMode) {
+  map.on('click', (e) => {
+    var feats = map.queryRenderedFeatures(e.point, { layers: allKeiFillLayerIds });
+    if (!feats.length) return;
+    var top = feats[0];
+    var lid = top.layer.id;
+    var stem = lid.replace(/^pmtiles_kei_/, '').replace(/_fill$/, '');
+    var lng = e.lngLat.lng.toFixed(6);
+    var lat = e.lngLat.lat.toFixed(6);
+    var p = top.properties;
+    var bfrR = p.BFR_RANK != null ? Number(p.BFR_RANK) : null;
+    var bfrG = p.BFR_GOSA != null ? Number(p.BFR_GOSA) : null;
+    var zureRy = (bfrR != null && bfrG != null) ? (bfrR - bfrG).toFixed(3) : '—';
+    var p2 = Object.assign({}, p, { zura_ryo: zureRy });
+    var lab = Object.assign({}, zureLabel, { zura_ryo: 'ずれ量（ランク前−ずれ前）' });
+    showAttributePanel('公図と現況のずれ（系' + stem + '・重畳）', lng, lat, p2, lab, '公図と現況のずれ_全系_' + stem);
   });
 }
