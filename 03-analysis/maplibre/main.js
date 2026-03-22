@@ -37,7 +37,7 @@ if (isZ12KeiMode || isAllKeiPmtilesMode) {
     z12KeiLogLine('unhandledrejection', ev.reason);
   });
   if (location.protocol === 'file:') {
-    z12KeiLogLine('file:// では /data が使えません。serve.py 経由の http を開いてください');
+    z12KeiLogLine('file:// 不可。serve.py 起動後 http://localhost:8080/03-analysis/maplibre/index.html を開く');
   }
   var z12Hud = document.getElementById('z12-kei-hud');
   if (z12Hud) {
@@ -84,17 +84,25 @@ map.on('error', (e) => {
   }
 });
 
-// ポリゴンデータを表示する
-var keiZureFillPaint = {
-  'fill-color': [
+// 色分けの入力（m）= BFR_GOSA（ずれ・前）。BFR_RANK は 1〜5 の区分コードであり RANK−GOSA はメートルにならない（凡例と一致しない）
+// 欠落・負値（想定外センチネル）は #bdbdbd。凡例: docs/legend-zure-deviation.md
+var zureDeviationFillColor = [
+  'case',
+  ['any', ['!', ['has', 'BFR_GOSA']], ['<', ['to-number', ['get', 'BFR_GOSA']], 0]],
+  '#bdbdbd',
+  [
     'step',
-    ['coalesce', ['-', ['get', 'BFR_RANK'], ['get', 'BFR_GOSA']], -1],
-    '#cccccc',
-    0.1, '#87ceeb',
-    0.3, '#98fb98',
-    1, '#fffacd',
-    10, '#d3d3d3',
+    ['to-number', ['get', 'BFR_GOSA']],
+    '#87ceeb',
+    0.1, '#98fb98',
+    0.3, '#fffacd',
+    1, '#ffb6c1',
+    10, '#9e9e9e',
   ],
+];
+
+var keiZureFillPaint = {
+  'fill-color': zureDeviationFillColor,
   'fill-opacity': 0.55,
   'fill-outline-color': 'rgba(0,0,0,0.15)',
 };
@@ -217,13 +225,13 @@ map.on('load', () => {
     },
   });
 
-  // PMTiles（公図と現況のずれデータ・マージ済み）。ずれ量 = ランク(前) - ずれ(前) = BFR_RANK - BFR_GOSA で色分け
+  // PMTiles（公図と現況のずれデータ・マージ済み）。塗り分けは BFR_GOSA（m）。ランクは BFR_RANK（1〜5）
   var zurePmtilesUrl = DATA + '/04-merge-geopackage/公図と現況のずれデータ_merged.pmtiles';
   map.addSource('pmtiles_zure', {
     type: 'vector',
     url: 'pmtiles://' + zurePmtilesUrl,
   });
-  // ずれ量（m）で5段階: 10cm未満 / 10cm〜30cm / 30cm〜1m / 1m〜10m / 10m以上 → 表の色
+  // ずれ量（m）5段階 + 属性欠落: docs/legend-zure-deviation.md
   map.addLayer({
     id: 'pmtiles_zure_fill',
     type: 'fill',
@@ -231,15 +239,7 @@ map.on('load', () => {
     'source-layer': 'kozu_merged',
     filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
     paint: {
-      'fill-color': [
-        'step',
-        ['coalesce', ['-', ['get', 'BFR_RANK'], ['get', 'BFR_GOSA']], -1],
-        '#cccccc',
-        0.1, '#87ceeb', // 〜30cm帯（step 上は [0.1,0.3)）
-        0.3, '#98fb98', // 〜1m帯（[0.3,1)）
-        1, '#fffacd', // 〜10m帯（[1,10)；1m〜10mのピンクは別閾値が無いと同一式では表現不可）
-        10, '#d3d3d3', // 10m以上
-      ],
+      'fill-color': zureDeviationFillColor,
       'fill-opacity': 0.6,
       'fill-outline-color': 'rgba(0,0,0,0.2)',
     },
@@ -515,18 +515,13 @@ map.on('click', 'pmtiles_toshi_merged_circle', (e) => {
   showAttributePanel('都市部官民基準点（マージ）', lng, lat, p, tks04206Label, '都市部官民基準点_マージ_属性');
 });
 
-// 公図と現況のずれデータ・ポリゴンクリック時: 全属性＋ずれ量（ランク前−ずれ前）を表示
+// 公図と現況のずれデータ・ポリゴンクリック時: 全属性（地図の色は ずれ(前) BFR_GOSA m に連動）
 var zureLabel = { id: 'ID', ooaza: '大字', koaza: '小字', chiban: '地番', jyotai: '状態', zumen: '図面', PREFCODE: '都道府県コード', CITYCODE: '市区町村コード', BFR_GOSA: 'ずれ(前)', BFR_RANK: 'ランク(前)', AFT_GOSA: 'ずれ(後)', AFT_RANK: 'ランク(後)' };
 map.on('click', 'pmtiles_zure_fill', (e) => {
   var lng = e.lngLat.lng.toFixed(6);
   var lat = e.lngLat.lat.toFixed(6);
   var p = e.features[0].properties;
-  var bfrR = p.BFR_RANK != null ? Number(p.BFR_RANK) : null;
-  var bfrG = p.BFR_GOSA != null ? Number(p.BFR_GOSA) : null;
-  var zureRy = (bfrR != null && bfrG != null) ? (bfrR - bfrG).toFixed(3) : '—';
-  var p2 = Object.assign({}, p, { zura_ryo: zureRy });
-  var lab = Object.assign({}, zureLabel, { zura_ryo: 'ずれ量（ランク前−ずれ前）' });
-  showAttributePanel('公図と現況のずれ', lng, lat, p2, lab, '公図と現況のずれ_属性');
+  showAttributePanel('公図と現況のずれ', lng, lat, p, zureLabel, '公図と現況のずれ_属性');
 });
 
 // 街区基準点等クリック時: 全属性をドラッグ可能パネルで表示
@@ -543,12 +538,7 @@ if (isZ12KeiMode) {
     var lng = e.lngLat.lng.toFixed(6);
     var lat = e.lngLat.lat.toFixed(6);
     var p = e.features[0].properties;
-    var bfrR = p.BFR_RANK != null ? Number(p.BFR_RANK) : null;
-    var bfrG = p.BFR_GOSA != null ? Number(p.BFR_GOSA) : null;
-    var zureRy = (bfrR != null && bfrG != null) ? (bfrR - bfrG).toFixed(3) : '—';
-    var p2 = Object.assign({}, p, { zura_ryo: zureRy });
-    var lab = Object.assign({}, zureLabel, { zura_ryo: 'ずれ量（ランク前−ずれ前）' });
-    showAttributePanel('公図と現況のずれ（z0–11 検図）', lng, lat, p2, lab, '公図と現況のずれ_z12_属性');
+    showAttributePanel('公図と現況のずれ（z0–11 検図）', lng, lat, p, zureLabel, '公図と現況のずれ_z12_属性');
   });
 }
 
@@ -562,11 +552,6 @@ if (isAllKeiPmtilesMode) {
     var lng = e.lngLat.lng.toFixed(6);
     var lat = e.lngLat.lat.toFixed(6);
     var p = top.properties;
-    var bfrR = p.BFR_RANK != null ? Number(p.BFR_RANK) : null;
-    var bfrG = p.BFR_GOSA != null ? Number(p.BFR_GOSA) : null;
-    var zureRy = (bfrR != null && bfrG != null) ? (bfrR - bfrG).toFixed(3) : '—';
-    var p2 = Object.assign({}, p, { zura_ryo: zureRy });
-    var lab = Object.assign({}, zureLabel, { zura_ryo: 'ずれ量（ランク前−ずれ前）' });
-    showAttributePanel('公図と現況のずれ（系' + stem + '・重畳）', lng, lat, p2, lab, '公図と現況のずれ_全系_' + stem);
+    showAttributePanel('公図と現況のずれ（系' + stem + '・重畳）', lng, lat, p, zureLabel, '公図と現況のずれ_全系_' + stem);
   });
 }

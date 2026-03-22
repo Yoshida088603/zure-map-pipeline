@@ -196,6 +196,7 @@ flowchart TD
 - **全系重畳検図**: `?mode=all-kei` で `data/05-pmtiles` の系別 PMTiles を複数ソースとして同時表示（実装は `main.js` の `ALL_KEI_PMTILES_STEMS` と一致させる）。
 - **検図**: `zure-map-pipeline/03-analysis/maplibre` で `python3 serve.py`（8080）。**カレントはリポジトリルート配下**（README の「検図」節）。`http://localhost:8080/...` を開く。
 - **参照実装**: `03-analysis/maplibre/main.js`（系別／全系モード分岐）、`02-convert/47-geopackage-per-kei2pmtiles.sh`。
+- **ずれポリゴンの色（凡例）**: `docs/legend-zure-deviation.md`（閾値・`step` の意味・`zureDeviationFillColor` と同一）。
 
 **HandsOn 側との差分で決めること**
 
