@@ -161,7 +161,7 @@ flowchart TD
 | 番号 | スクリプト | 対象 | 実際の役割 |
 |------|------------|------|------------|
 | **10** | `10-data-preview.sh` | `data/01-raw-data` | ベースライン（件数・構造・処理区分）。変換しない |
-| **20** | `20-shp2geopackage.sh` | SHP→個別 GPKG | 変換。**`zure` / `14jyo` で `verify_gpkg_vs_shp`（SHP 合計 vs GPKG 件数）**。マージ・PMTiles なし |
+| **20** | `20-shp2geopackage.sh` | SHP→個別 GPKG | 変換。**`zure` / `14jyo` / `zure-twopass-test`（単一系試走）** 等。**`verify_gpkg_vs_shp`（SHP 合計 vs GPKG 件数）**。マージ・PMTiles なし |
 | **25** | `25-csv2geopackage.sh` | CSV→個別 GPKG | データセット別に `csv2geopackage/` へ出力 |
 | **30** | `30-check-geopackage.sh` | 個別 GPKG | **RAW 公図 SHP と `geopackage_per_kei` の件数突合**（ogrinfo）。`20` の verify と同じ観点を後から再確認可能 |
 | **40** | `40-merge-geopackage.sh` | `04-merge-geopackage/` | 用途別マージ（`zure` は系別 GPKG を 1 本化） |
@@ -169,6 +169,8 @@ flowchart TD
 | **45** | `45-geopackage2pmtiles.sh` | 1 本の GPKG | **既定は** `04-merge-geopackage` 内に `.pmtiles` を**同階層出力**。Parquet 経由フォールバックあり |
 | **47** | `47-geopackage-per-kei2pmtiles.sh` | `geopackage_per_kei/*.gpkg` | **系別 GPKG をそのまま** `05-pmtiles/NN.pmtiles`（**既定 z0–11**、45 と同じ MAX 既定） |
 | **50** | `50-check-pmtiles.sh` | GDAL 環境 | PMTiles ドライバ登録と**最小**書き出しテスト。本番 GPKG との突合なし |
+
+**45 と 47（区別）:** **45**＝**1 GPKG→1 PMTiles** の実装本体（ogr2ogr 等）。**47**＝`geopackage_per_kei` を列挙して **各ファイルに対し 45 を子プロセスで繰り返し呼ぶラッパ**（GDAL 処理は 45 のみ）。マージ済み 1 本は **45 だけ**でよい。
 
 - **MapLibre** `serve.py`: Range 配信・**8080 固定**。`main.js` は `/data` 基準。
 - **スモーク**（1 件 E2E）は主幹外。**任意**で `02-convert/scripts-smoke/` 等に `single_csv_to_pmtiles.sh` 相当を記載。
@@ -319,6 +321,7 @@ Cursor/zure-map-pipeline/
 | **2025-03-21** | **中間形式の方針**: 分析対象が大容量でも、主幹は **GeoPackage のまま**（GeoParquet を正とする分岐は設けない）。Python 分析は GPKG＋既存スタックで対応。 |
 | **2025-03-21** | **GDAL 動作確認（環境差）**: Cursor エージェント用 Linux では `ogr2ogr` が PATH に無く（`gdal-bin` 未インストール相当）、`02-convert/50-check-pmtiles.sh` は失敗。**HandsOn** の `gdal-full/local/bin/ogr2ogr` は存在するが、`libgdal.so.*` が見つからない状態では実行不可（`source …/gdal-full/env.sh` や `LD_LIBRARY_PATH` 未設定と同様）。**ビルド不要かどうかの最終判断はユーザーの WSL** で `ogr2ogr --version`・`ogrinfo --formats`（PMTiles 等）・`50-check-pmtiles.sh` を実行して行う（手順は [§8.3](#sec-8-3)）。 |
 | **2026-03-22** | **実データ・全国 `20 zure`**: `ZURE_TWO_PASS=1` で RAW 公図 SHP 全系を GPKG 化し、`verify_gpkg_vs_shp` で **SHP 合計 2,312,146 ＝ GPKG 合計** を確認。成果・`run.log` は `data/03-geopackage/shp2geopackage/run_zure_20260322_013135/`（Git 外）。記録は `README.md`・`docs/investigation-shp-gpkg-geometry-loss.md`。 |
+| **2026-03-23** | **`21-zure-two-pass-test.sh` 削除**: 単一系の 2 段階試走は **`20 zure-twopass-test [系]`** のみ（旧 21 はラッパだったため統合済み）。README・本表の **20** 行を更新。 |
 
 **いまの位置づけ（要約）**: 骨格・RAW・**番号付きシェル＋MapLibre の移植**・リモート push・Git 作者まで完了。**`20 zure` の全国・件数照合は実データで成功（2026-03-22 記録）**。**未了**: **パイプライン通し**（10→…→MapLibre までの連続検証）、**GDAL 隔離（`env.sh` 相当）は任意のまま**、**WSL での GDAL 実機確認**（エージェント環境では未充足）、HandsOn 手動削除（ユーザーのみ）。
 

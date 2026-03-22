@@ -2,17 +2,18 @@
 # Shapefile → GeoPackage への変換のみ（マージ・PMTiles は行わない。後続は 40-merge / 45-geopackage2pmtiles）。
 # GPKG: 件数ズレの主因は「無効ジオメトリ等でコピー失敗 → -skipfailures で黙ってスキップ」。
 # 対策: ogr2ogr に -makevalid（GEOS）を付けて書き込み可能な形状に直し、GPKG へのコピーでは -skipfailures を使わない。
-# ずれまっぷ zure では別経路あり: ZURE_TWO_PASS=1（既定）→ 第1段 VRT→GPKG は -makevalid なし、第2段 SpatiaLite ST_MakeValid(geom)。RAW 件数との整合が良い（21 で検証）。
+# ずれまっぷ zure では別経路あり: ZURE_TWO_PASS=1（既定）→ 第1段 VRT→GPKG は -makevalid なし、第2段 SpatiaLite ST_MakeValid(geom)。RAW 件数との整合が良い。
 # 従来の 1 段 ogr2ogr -makevalid のみ: ZURE_TWO_PASS=0
 # 終了時に SHP 合計と GPKG の featureCount を照合し、不一致なら exit 1（原因調査のため）。
 # 照合を省略する場合: VERIFY_GPKG_COUNT=0  /  zure 以外で MakeValid を無効: OGR2OGR_NO_MAKEVALID=1（非推奨）
 # DBF 文字化けは VRT 側の OpenOptions（CP932）などで調整。
-# 使い方: bash 02-convert/20-shp2geopackage.sh [sample|14jyo|zure|all]
+# 使い方: bash 02-convert/20-shp2geopackage.sh [sample|14jyo|zure|zure-twopass-test|all] […]
 # - sample: input の *.shp → shp2geopackage/run_sample_<TS>/ に各 .gpkg
 # - 14jyo:  RAW の 14条地図 内の全 SHP → 1 GPKG（run_14jyo_<TS>/）
 # - zure:   ずれまっぷ（公図と現況のずれデータ）RAW 公図 → 系ごと 1 GPKG（geopackage_per_kei/）。統合は 40-merge-geopackage.sh zure
+# - zure-twopass-test [系]: 単一系の 2 段階試走。ZURE_TWO_PASS=1・ZURE_ONLY_KEI・出力 two_pass_test_keiNN_<TS>/ を自動設定して zure 実行（第2引数省略時は 03）。OUTPUT_BASE は上書き可。
 # 市区町村のみテスト: ZURE_SHIKUCHOSON=練馬区（カンマ区切りで複数可）→ */公図/<市区町村名>/* の SHP のみ。
-# 系のみテスト: ZURE_ONLY_KEI=03 または 03,08（2 桁。存在する系だけ処理）
+# 系のみテスト: ZURE_ONLY_KEI=03 または 03,08（2 桁。存在する系だけ処理）※ zure モード時
 # 前提: PATH に ogr2ogr。zure で ZURE_TWO_PASS=1 のときは python3（SpatiaLite SQL 生成）。
 
 set -e
@@ -372,18 +373,34 @@ run_zure() {
 }
 
 MODE="${1:-all}"
+TWOPASS_TEST_KEI="${2:-}"
+
 case "$MODE" in
   sample) run_sample ;;
   14jyo) run_14jyo ;;
   zure) run_zure ;;
+  zure-twopass-test)
+    KEI_TPT="${TWOPASS_TEST_KEI:-03}"
+    if ! [[ "$KEI_TPT" =~ ^[0-9]{1,2}$ ]]; then
+      echo "Usage: $0 zure-twopass-test [系番号 既定03]" >&2
+      exit 1
+    fi
+    KEI_TPT=$(printf '%02d' "$((10#$KEI_TPT))")
+    export ZURE_TWO_PASS=1
+    export ZURE_ONLY_KEI="$KEI_TPT"
+    RUN_TS_TPT=$(TZ=Asia/Tokyo date +%Y%m%d_%H%M%S)
+    export OUTPUT_BASE="${OUTPUT_BASE:-$REPO_ROOT/data/03-geopackage/shp2geopackage/two_pass_test_kei${KEI_TPT}_${RUN_TS_TPT}}"
+    run_zure
+    ;;
   all)
     run_sample
     run_14jyo
     run_zure
     ;;
   *)
-    echo "Usage: $0 [sample|14jyo|zure|all]" >&2
+    echo "Usage: $0 [sample|14jyo|zure|zure-twopass-test|all] […]" >&2
     echo "  zure 用: ZURE_SHIKUCHOSON=… OUTPUT_BASE=…  ZURE_TWO_PASS=0|1（既定1: 2段階 ST_MakeValid）  ZURE_ONLY_KEI=03,08（任意）" >&2
+    echo "  単一系試走: $0 zure-twopass-test [03]" >&2
     exit 1
     ;;
 esac

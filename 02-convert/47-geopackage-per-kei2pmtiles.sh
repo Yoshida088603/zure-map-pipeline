@@ -2,7 +2,9 @@
 # data/03-geopackage/shp2geopackage/geopackage_per_kei の各 GeoPackage を、
 # マスク・分割なしで PMTiles（既定 zoom 0–11）へ書き出す。
 #
-# 実処理は 45-geopackage2pmtiles.sh（MAX_FEATURES / MAX_SIZE 既定 2^31-1、タイル内切り捨てを実質無効化）。
+# 【45 との違い】本スクリプト単体には ogr2ogr 等の変換ロジックは無い。
+#   やっていることは「*.gpkg を列挙し、各ファイルごとに 45-geopackage2pmtiles.sh を bash する」ループのみ。
+# 実処理・MAX_FEATURES / MAX_SIZE 既定 2^31-1（タイル内切り捨てを実質無効化）はすべて 45 側。
 # 命名: NN.gpkg → <出力ディレクトリ>/NN.pmtiles（GPKG のベース名そのまま）
 #
 # 使い方（リポジトリルートで）:

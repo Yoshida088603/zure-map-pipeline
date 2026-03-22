@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# GeoPackage を PMTiles に変換する。
+# GeoPackage を PMTiles に変換する（1 入力ファイル → 1 出力 .pmtiles）。
+#
+# 【47 との関係】47-geopackage-per-kei2pmtiles.sh は GDAL を持たず、
+#   geopackage_per_kei 内の各 *.gpkg について「本スクリプトを bash で 1 回ずつ」呼ぶだけ。
+#   迷ったら: 単一 GPKG なら 45 直実行 / 系別フォルダを一括なら 47。
+#
 # 使い方: bash 02-convert/45-geopackage2pmtiles.sh [入力.gpkg] [出力ディレクトリ]
 #   第2引数省略時: 入力と同じディレクトリに .pmtiles（従来どおり）
 #   第2引数あり時: そのディレクトリに <入力ベース名>.pmtiles（存在しなければ mkdir -p）
