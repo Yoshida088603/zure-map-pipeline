@@ -2,7 +2,7 @@
 # 個別 GPKG（data/03-geopackage/csv2geopackage）を用途別にマージし data/04-merge-geopackage に出力する。
 # zure: ずれまっぷ（20-shp2geopackage.sh zure）の geopackage_per_kei（01.gpkg…15.gpkg）を 1 本の公図と現況のずれデータ_merged.gpkg に統合。
 # 旧 HandsOn の merge_tochi / merge_gaiku / merge_toshi / merge_kozu を順に実行相当。
-# 使い方: bash 02-convert/40-merge-geopackage.sh [tochi|gaiku|toshi|kozu|zure|all]
+# 使い方: bash 02-convert/40-merge-csv-sauce-geopackage.sh [tochi|gaiku|toshi|kozu|zure|all]
 # 前提: PATH 上に ogr2ogr。GDAL のビルドは行わない。
 
 set -e

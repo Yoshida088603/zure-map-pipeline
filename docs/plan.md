@@ -164,8 +164,8 @@ flowchart TD
 | **20** | `20-shp2geopackage.sh` | SHP→個別 GPKG | 変換。**`zure` / `14jyo` / `zure-twopass-test`（単一系試走）** 等。**`verify_gpkg_vs_shp`（SHP 合計 vs GPKG 件数）**。マージ・PMTiles なし |
 | **25** | `25-csv2geopackage.sh` | CSV→個別 GPKG | データセット別に `csv2geopackage/` へ出力 |
 | **30** | `30-check-geopackage.sh` | 個別 GPKG | **RAW 公図 SHP と `geopackage_per_kei` の件数突合**（ogrinfo）。`20` の verify と同じ観点を後から再確認可能 |
-| **40** | `40-merge-geopackage.sh` | `04-merge-geopackage/` | 用途別マージ（`zure` は系別 GPKG を 1 本化） |
-| **42** | `42-check-merge-geopackage.sh` | 統合 GPKG | **ogrinfo** 先頭部の表示（目視）。合格判定ロジックなし |
+| **40** | `40-merge-csv-sauce-geopackage.sh` | `04-merge-geopackage/` | 用途別マージ（`zure` は系別 GPKG を 1 本化） |
+| **42** | `42-check-merged-geopackage.sh` | 統合 GPKG | **ogrinfo** 先頭部の表示（目視）。合格判定ロジックなし |
 | **45** | `45-geopackage2pmtiles.sh` | 1 本の GPKG | **既定は** `04-merge-geopackage` 内に `.pmtiles` を**同階層出力**。Parquet 経由フォールバックあり |
 | **47** | `47-geopackage-per-kei2pmtiles.sh` | `geopackage_per_kei/*.gpkg` | **系別 GPKG をそのまま** `05-pmtiles/NN.pmtiles`（**既定 z0–11**、45 と同じ MAX 既定） |
 | **50** | `50-check-pmtiles.sh` | GDAL 環境 | PMTiles ドライバ登録と**最小**書き出しテスト。本番 GPKG との突合なし |
@@ -225,8 +225,8 @@ Cursor/zure-map-pipeline/
 │   ├── 20-shp2geopackage.sh
 │   ├── 25-csv2geopackage.sh
 │   ├── 30-check-geopackage.sh
-│   ├── 40-merge-geopackage.sh
-│   ├── 42-check-merge-geopackage.sh
+│   ├── 40-merge-csv-sauce-geopackage.sh
+│   ├── 42-check-merged-geopackage.sh
 │   ├── 45-geopackage2pmtiles.sh
 │   ├── 47-geopackage-per-kei2pmtiles.sh
 │   └── 50-check-pmtiles.sh

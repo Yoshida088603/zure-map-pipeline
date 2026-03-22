@@ -10,7 +10,7 @@
 # 使い方: bash 02-convert/20-shp2geopackage.sh [sample|14jyo|zure|zure-twopass-test|all] […]
 # - sample: input の *.shp → shp2geopackage/run_sample_<TS>/ に各 .gpkg
 # - 14jyo:  RAW の 14条地図 内の全 SHP → 1 GPKG（run_14jyo_<TS>/）
-# - zure:   ずれまっぷ（公図と現況のずれデータ）RAW 公図 → 系ごと 1 GPKG（geopackage_per_kei/）。統合は 40-merge-geopackage.sh zure
+# - zure:   ずれまっぷ（公図と現況のずれデータ）RAW 公図 → 系ごと 1 GPKG（geopackage_per_kei/）。統合は 40-merge-csv-sauce-geopackage.sh zure
 # - zure-twopass-test [系]: 単一系の 2 段階試走。ZURE_TWO_PASS=1・ZURE_ONLY_KEI・出力 two_pass_test_keiNN_<TS>/ を自動設定して zure 実行（第2引数省略時は 03）。OUTPUT_BASE は上書き可。
 # 市区町村のみテスト: ZURE_SHIKUCHOSON=練馬区（カンマ区切りで複数可）→ */公図/<市区町村名>/* の SHP のみ。
 # 系のみテスト: ZURE_ONLY_KEI=03 または 03,08（2 桁。存在する系だけ処理）※ zure モード時
@@ -259,7 +259,7 @@ run_zure() {
     : "${ZURE_TWO_PASS:=1}"
     echo "ZURE_TWO_PASS=${ZURE_TWO_PASS}"
     echo "ZURE_ONLY_KEI=${ZURE_ONLY_KEI:-}"
-    echo "（系別 GPKG の全国 1 ファイルへの統合は 40-merge-geopackage.sh zure）"
+    echo "（系別 GPKG の全国 1 ファイルへの統合は 40-merge-csv-sauce-geopackage.sh zure）"
     if [[ "${ZURE_TWO_PASS}" == "1" ]]; then
       command -v python3 &>/dev/null || {
         echo "Error: ZURE_TWO_PASS=1 のときは python3 が必要です。" >&2

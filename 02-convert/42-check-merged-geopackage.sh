@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 統合 GeoPackage（data/04-merge-geopackage）の ogrinfo による簡易検証。
-# 使い方: bash 02-convert/42-check-merge-geopackage.sh [ディレクトリ]
+# 使い方: bash 02-convert/42-check-merged-geopackage.sh [ディレクトリ]
 # 既定: data/04-merge-geopackage
 
 set -e
@@ -17,7 +17,7 @@ if ! command -v ogrinfo &>/dev/null; then
   exit 1
 fi
 
-echo "=== 42-check-merge-geopackage: $DIR ==="
+echo "=== 42-check-merged-geopackage: $DIR ==="
 shopt -s nullglob
 for gpkg in "$DIR"/*.gpkg; do
   [[ -f "$gpkg" ]] || continue
