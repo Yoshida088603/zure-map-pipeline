@@ -514,13 +514,14 @@ map.on('click', 'pmtiles_takakuten_circle', (e) => {
 
 // 14条地図ポリゴンクリック時: 全属性をドラッグ可能パネルで表示
 map.on('click', 'pmtiles_jyuchizu_fill', (e) => {
+  var f = e.features[0];
   var lng = e.lngLat.lng.toFixed(6);
   var lat = e.lngLat.lat.toFixed(6);
-  var p = e.features[0].properties;
-  showAttributePanel('14条完了エリア', lng, lat, p, { ID: 'ID', AREA: 'AREA' }, '14条地図_属性');
+  var p = f.properties;
+  showAttributePanel('14条完了エリア', lng, lat, p, { ID: 'ID', AREA: 'AREA' }, '14条地図_属性', { geometry: f.geometry });
 });
 
-// 全レイヤ共通: ドラッグ可能な属性パネル（全属性表示・CSVダウンロード）
+// 全レイヤ共通: ドラッグ可能な属性パネル（CSV または GeoJSON ダウンロード）
 var tochiLabel = {
   col0: 'col0', col1: '市町村コード', col2: '市区町村名', col3: 'col3', col4: 'col4', col5: '座標系',
   col6: 'col6', x: 'X', y: 'Y', col9: 'col9', col10: 'col10', col11: '住所等', col12: 'col12',
@@ -573,10 +574,17 @@ function ensureAttrPanel() {
     var btn = ev.target && ev.target.closest && ev.target.closest('.tochi-download-btn');
     if (!btn || !btn.closest('.tochi-panel') || !btn.dataset.downloadId) return;
     var data = attrDownloadData[btn.dataset.downloadId];
-    if (!data || !data.csv) return;
+    if (!data || (!data.csv && !data.geojson)) return;
+    var ts = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+    var base = (data.filename || '属性') + '_' + ts;
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([data.csv], { type: 'text/csv;charset=utf-8' }));
-    a.download = (data.filename || '属性') + '_' + (new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')) + '.csv';
+    if (data.format === 'geojson' && data.geojson) {
+      a.href = URL.createObjectURL(new Blob([data.geojson], { type: 'application/geo+json;charset=utf-8' }));
+      a.download = base + '.geojson';
+    } else {
+      a.href = URL.createObjectURL(new Blob([data.csv], { type: 'text/csv;charset=utf-8' }));
+      a.download = base + '.csv';
+    }
     a.click();
     URL.revokeObjectURL(a.href);
     delete attrDownloadData[btn.dataset.downloadId];
@@ -585,7 +593,43 @@ function ensureAttrPanel() {
   return panel;
 }
 
-function showAttributePanel(title, lng, lat, properties, labelMap, downloadFilename) {
+/** MVT 属性を GeoJSON properties にコピー（mvt_id は除外） */
+function propertiesForGeoJsonDownload(properties) {
+  var out = {};
+  Object.keys(properties).forEach(function (k) {
+    if (k === 'mvt_id') return;
+    out[k] = properties[k];
+  });
+  return out;
+}
+
+/**
+ * クリックしたベクタポリゴンを 1 件の FeatureCollection として JSON 化（座標は地図 CRS = WGS84）
+ * geometry が無いときは null
+ */
+function buildPolygonGeoJsonDownloadString(geometry, properties) {
+  if (!geometry || !geometry.type) return null;
+  var t = geometry.type;
+  if (t !== 'Polygon' && t !== 'MultiPolygon') return null;
+  try {
+    var geom = JSON.parse(JSON.stringify(geometry));
+    var feat = {
+      type: 'Feature',
+      geometry: geom,
+      properties: propertiesForGeoJsonDownload(properties || {}),
+    };
+    var fc = { type: 'FeatureCollection', features: [feat] };
+    return JSON.stringify(fc, null, 2);
+  } catch (err) {
+    console.warn('GeoJSON build failed', err);
+    return null;
+  }
+}
+
+/**
+ * @param {object} [downloadOpts] — `{ geometry }` を渡すと SHP 系由来レイヤとみなし GeoJSON を DL（土地活用等は従来 CSV）
+ */
+function showAttributePanel(title, lng, lat, properties, labelMap, downloadFilename, downloadOpts) {
   var fmt = (v) => (v != null && v !== '') ? String(v) : '—';
   var rows = [['経度', lng], ['緯度', lat]];
   Object.keys(properties).forEach(function (k) {
@@ -595,7 +639,20 @@ function showAttributePanel(title, lng, lat, properties, labelMap, downloadFilen
   var csvLines = [['項目', '値']].concat(rows).map(function (r) { return csvEscape(r[0]) + ',' + csvEscape(r[1]); });
   var csvString = '\uFEFF' + csvLines.join('\n');
   var downloadId = 'attr-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-  attrDownloadData[downloadId] = { csv: csvString, filename: downloadFilename || '属性' };
+
+  var geojsonStr =
+    downloadOpts && downloadOpts.geometry
+      ? buildPolygonGeoJsonDownloadString(downloadOpts.geometry, properties)
+      : null;
+  if (geojsonStr) {
+    attrDownloadData[downloadId] = {
+      format: 'geojson',
+      geojson: geojsonStr,
+      filename: downloadFilename || '属性',
+    };
+  } else {
+    attrDownloadData[downloadId] = { format: 'csv', csv: csvString, filename: downloadFilename || '属性' };
+  }
 
   var tableRows = rows.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + r[1] + '</td></tr>'; });
   var bodyHtml = '<p><strong>座標</strong> 経度 ' + lng + ' / 緯度 ' + lat + '</p><table><tbody>' + tableRows.join('') + '</tbody></table>';
@@ -603,7 +660,9 @@ function showAttributePanel(title, lng, lat, properties, labelMap, downloadFilen
   var panel = ensureAttrPanel();
   panel.querySelector('.tochi-panel-title').textContent = title;
   panel.querySelector('.tochi-panel-body').innerHTML = bodyHtml;
-  panel.querySelector('.tochi-download-btn').dataset.downloadId = downloadId;
+  var dlBtn = panel.querySelector('.tochi-download-btn');
+  dlBtn.dataset.downloadId = downloadId;
+  dlBtn.textContent = geojsonStr ? 'GeoJSONでダウンロード' : 'CSVでダウンロード';
   panel.style.left = '20px';
   panel.style.top = '20px';
   panel.classList.add('is-visible');
@@ -640,11 +699,12 @@ map.on('click', 'pmtiles_toshi_merged_circle', (e) => {
 // 公図と現況のずれデータ・ポリゴンクリック時: 全属性（地図の色は ずれ(前) BFR_GOSA m に連動）
 var zureLabel = { id: 'ID', ooaza: '大字', koaza: '小字', chiban: '地番', jyotai: '状態', zumen: '図面', PREFCODE: '都道府県コード', CITYCODE: '市区町村コード', BFR_GOSA: 'ずれ(前)', BFR_RANK: 'ランク(前)', AFT_GOSA: 'ずれ(後)', AFT_RANK: 'ランク(後)' };
 map.on('click', 'pmtiles_zure_fill', (e) => {
+  var f = e.features[0];
   var lng = e.lngLat.lng.toFixed(6);
   var lat = e.lngLat.lat.toFixed(6);
-  var p = e.features[0].properties;
+  var p = f.properties;
   setZureSelectionHighlight('pmtiles_zure_selected', p);
-  showAttributePanel('公図と現況のずれ', lng, lat, p, zureLabel, '公図と現況のずれ_属性');
+  showAttributePanel('公図と現況のずれ', lng, lat, p, zureLabel, '公図と現況のずれ_属性', { geometry: f.geometry });
 });
 
 // 街区基準点等クリック時: 全属性をドラッグ可能パネルで表示
@@ -658,11 +718,12 @@ map.on('click', 'pmtiles_gaiku_circle', (e) => {
 
 if (isZ12KeiMode) {
   map.on('click', 'pmtiles_09kei_z12_fill', (e) => {
+    var f = e.features[0];
     var lng = e.lngLat.lng.toFixed(6);
     var lat = e.lngLat.lat.toFixed(6);
-    var p = e.features[0].properties;
+    var p = f.properties;
     setZureSelectionHighlight('pmtiles_09kei_z12_selected', p);
-    showAttributePanel('公図と現況のずれ（z0–11 検図）', lng, lat, p, zureLabel, '公図と現況のずれ_z12_属性');
+    showAttributePanel('公図と現況のずれ（z0–11 検図）', lng, lat, p, zureLabel, '公図と現況のずれ_z12_属性', { geometry: f.geometry });
   });
 }
 
@@ -677,6 +738,8 @@ if (isAllKeiPmtilesMode) {
     var lat = e.lngLat.lat.toFixed(6);
     var p = top.properties;
     setZureSelectionHighlight('pmtiles_kei_' + stem + '_selected', p);
-    showAttributePanel('公図と現況のずれ（系' + stem + '・重畳）', lng, lat, p, zureLabel, '公図と現況のずれ_全系_' + stem);
+    showAttributePanel('公図と現況のずれ（系' + stem + '・重畳）', lng, lat, p, zureLabel, '公図と現況のずれ_全系_' + stem, {
+      geometry: top.geometry,
+    });
   });
 }
