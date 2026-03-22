@@ -322,6 +322,7 @@ Cursor/zure-map-pipeline/
 | **2025-03-21** | **GDAL 動作確認（環境差）**: Cursor エージェント用 Linux では `ogr2ogr` が PATH に無く（`gdal-bin` 未インストール相当）、`02-convert/50-check-pmtiles.sh` は失敗。**HandsOn** の `gdal-full/local/bin/ogr2ogr` は存在するが、`libgdal.so.*` が見つからない状態では実行不可（`source …/gdal-full/env.sh` や `LD_LIBRARY_PATH` 未設定と同様）。**ビルド不要かどうかの最終判断はユーザーの WSL** で `ogr2ogr --version`・`ogrinfo --formats`（PMTiles 等）・`50-check-pmtiles.sh` を実行して行う（手順は [§8.3](#sec-8-3)）。 |
 | **2026-03-22** | **実データ・全国 `20 zure`**: `ZURE_TWO_PASS=1` で RAW 公図 SHP 全系を GPKG 化し、`verify_gpkg_vs_shp` で **SHP 合計 2,312,146 ＝ GPKG 合計** を確認。成果・`run.log` は `data/03-geopackage/shp2geopackage/run_zure_20260322_013135/`（Git 外）。記録は `README.md`・`docs/investigation-shp-gpkg-geometry-loss.md`。 |
 | **2026-03-23** | **`21-zure-two-pass-test.sh` 削除**: 単一系の 2 段階試走は **`20 zure-twopass-test [系]`** のみ（旧 21 はラッパだったため統合済み）。README・本表の **20** 行を更新。 |
+| **2026-03-23** | **GPKG 分割スクリプト削除**: `46-split-gpkg-fid-half.sh`・`46-split-gpkg-tokyo-other.sh` を除去（47 系別 PMTiles で足りる運用のため）。README の 46 行を削除。 |
 
 **いまの位置づけ（要約）**: 骨格・RAW・**番号付きシェル＋MapLibre の移植**・リモート push・Git 作者まで完了。**`20 zure` の全国・件数照合は実データで成功（2026-03-22 記録）**。**未了**: **パイプライン通し**（10→…→MapLibre までの連続検証）、**GDAL 隔離（`env.sh` 相当）は任意のまま**、**WSL での GDAL 実機確認**（エージェント環境では未充足）、HandsOn 手動削除（ユーザーのみ）。
 
