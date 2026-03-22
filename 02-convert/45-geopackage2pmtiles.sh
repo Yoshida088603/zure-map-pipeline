@@ -1,12 +1,50 @@
 #!/usr/bin/env bash
-# GeoPackage を PMTiles に変換する。出力は入力と同じディレクトリに .pmtiles。
-# 使い方: bash 02-convert/45-geopackage2pmtiles.sh [入力.gpkg]
+# GeoPackage を PMTiles に変換する。
+# 使い方: bash 02-convert/45-geopackage2pmtiles.sh [入力.gpkg] [出力ディレクトリ]
+#   第2引数省略時: 入力と同じディレクトリに .pmtiles（従来どおり）
+#   第2引数あり時: そのディレクトリに <入力ベース名>.pmtiles（存在しなければ mkdir -p）
+# 環境変数 PMTILES_OUT_DIR で出力先を指定してもよい（第2引数が優先）
+# 環境変数 PMTILES_MINZOOM / PMTILES_MAXZOOM（既定 0 / 12。細かい縮尺は 15 等）
 # 既定入力: data/04-merge-geopackage/土地活用推進調査_merged.gpkg
-# 前提: PATH 上に ogr2ogr（GDAL）。ビルド作業は行わない。
+# GDAL: 基本は 20 と同じ（PATH の ogr2ogr / ogrinfo）。無いときだけ次を順に試す:
+#   GDAL_ENV_SH、リポジトリ隣の MapLibre HandsOn gdal-full/env.sh（docs/plan.md の配置例）
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+export LANG=C.UTF-8
+cd "$REPO_ROOT"
+
+zure_try_source_gdal_env() {
+  command -v ogr2ogr &>/dev/null && return 0
+  local env_sh
+  local cands=()
+  [[ -n "${GDAL_ENV_SH:-}" ]] && cands+=( "$GDAL_ENV_SH" )
+  cands+=(
+    "$REPO_ROOT/../maplibre/MapLibre-HandsOn-Beginner/05_ポリゴン表示/gdal-full/env.sh"
+    "$REPO_ROOT/../MapLibre-HandsOn-Beginner/05_ポリゴン表示/gdal-full/env.sh"
+  )
+  for env_sh in "${cands[@]}"; do
+    [[ -z "$env_sh" || ! -f "$env_sh" ]] && continue
+    # shellcheck source=/dev/null
+    source "$env_sh"
+    if command -v ogr2ogr &>/dev/null; then
+      echo "GDAL: env を読み込みました ($env_sh)" >&2
+      return 0
+    fi
+  done
+  return 1
+}
+
+zure_try_source_gdal_env || true
+
+for cmd in ogr2ogr ogrinfo; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "Error: $cmd が PATH にありません。apt install gdal-bin、または GDAL_ENV_SH / HandsOn の gdal-full/env.sh を用意してください。" >&2
+    exit 1
+  fi
+done
+
 DEFAULT_GPKG="$REPO_ROOT/data/04-merge-geopackage/土地活用推進調査_merged.gpkg"
 
 GPKG="${1:-$DEFAULT_GPKG}"
@@ -15,16 +53,27 @@ if [[ ! -f "$GPKG" ]]; then
   exit 1
 fi
 
+GPKG="$(cd "$(dirname "$GPKG")" && pwd)/$(basename "$GPKG")"
 DIR="$(dirname "$GPKG")"
 BASE="$(basename "$GPKG" .gpkg)"
-OUT_PMTILES="$DIR/${BASE}.pmtiles"
-OUT_PARQUET="$DIR/${BASE}.parquet"
+OUT_PARENT="${2:-${PMTILES_OUT_DIR:-}}"
+if [[ -n "$OUT_PARENT" ]]; then
+  mkdir -p "$OUT_PARENT"
+  OUT_PARENT="$(cd "$OUT_PARENT" && pwd)"
+  OUT_PMTILES="$OUT_PARENT/${BASE}.pmtiles"
+  OUT_PARQUET="$OUT_PARENT/${BASE}.parquet"
+else
+  OUT_PMTILES="$DIR/${BASE}.pmtiles"
+  OUT_PARQUET="$DIR/${BASE}.parquet"
+fi
 
-cd "$REPO_ROOT"
 T_SRS="-t_srs EPSG:3857"
+PMTILES_MINZOOM="${PMTILES_MINZOOM:-0}"
+PMTILES_MAXZOOM="${PMTILES_MAXZOOM:-12}"
 
-echo "Converting: $GPKG -> $OUT_PMTILES"
-err=$(ogr2ogr -skipfailures -nlt PROMOTE_TO_MULTI $T_SRS -dsco MINZOOM=0 -dsco MAXZOOM=15 \
+echo "Converting: $GPKG -> $OUT_PMTILES (MINZOOM=$PMTILES_MINZOOM MAXZOOM=$PMTILES_MAXZOOM)"
+err=$(ogr2ogr -skipfailures -nlt PROMOTE_TO_MULTI $T_SRS \
+  -dsco "MINZOOM=$PMTILES_MINZOOM" -dsco "MAXZOOM=$PMTILES_MAXZOOM" \
   -f "PMTiles" "$OUT_PMTILES" "$GPKG" 2>&1) || true
 if [[ -f "$OUT_PMTILES" ]]; then
   echo "Done. Output: $OUT_PMTILES"
@@ -43,8 +92,9 @@ if ! ogr2ogr -skipfailures $T_SRS -f Parquet -lco GEOMETRY_ENCODING=WKB "$OUT_PA
 fi
 [[ -f "$OUT_PARQUET" ]] || { echo "Error: Parquet が生成されませんでした。" >&2; exit 1; }
 
-echo "Writing PMTiles: $OUT_PMTILES"
-pmt_err=$(ogr2ogr -skipfailures -s_srs EPSG:3857 $T_SRS -dsco MINZOOM=0 -dsco MAXZOOM=15 -f "PMTiles" \
+echo "Writing PMTiles: $OUT_PMTILES (MINZOOM=$PMTILES_MINZOOM MAXZOOM=$PMTILES_MAXZOOM)"
+pmt_err=$(ogr2ogr -skipfailures -s_srs EPSG:3857 $T_SRS \
+  -dsco "MINZOOM=$PMTILES_MINZOOM" -dsco "MAXZOOM=$PMTILES_MAXZOOM" -f "PMTiles" \
   "$OUT_PMTILES" "$OUT_PARQUET" 2>&1) || true
 
 if [[ -f "$OUT_PMTILES" ]]; then

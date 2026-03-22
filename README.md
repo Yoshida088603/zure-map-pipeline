@@ -15,7 +15,7 @@
 | **30** | `02-convert/30-check-geopackage.sh` | **RAW（公図 SHP）と `geopackage_per_kei/*.gpkg`（`kozu_merged`）のフィーチャ件数突合**（系別＋合計）。`20` の `verify_gpkg_vs_shp` と同じ前提。引数省略時は最新の `run_zure*/geopackage_per_kei`。`ZURE_SHIKUCHOSON` は `20` と同様。NG なら 20/25 に戻る。 |
 | **40** | `02-convert/40-merge-geopackage.sh` | **用途別マージ** → `data/04-merge-geopackage/`。`tochi`/`gaiku`/`toshi`/`kozu`（CSV 系）に加え、ずれまっぷ SHP 経路は **`zure`**（`20` の `geopackage_per_kei` を統合）。 |
 | **42** | `02-convert/42-check-merge-geopackage.sh` | **統合 GPKG の ogrinfo 出力**（レイヤ名・件数・投影などの**目視確認用**。自動の合格／不合格判定はしない）。 |
-| **45** | `02-convert/45-geopackage2pmtiles.sh` | **GPKG → PMTiles**。出力は**入力 GPKG と同じディレクトリ**（既定例は `data/04-merge-geopackage/*.pmtiles`）。公図ずれなら引数で `…/公図と現況のずれデータ_merged.gpkg` を指定。 |
+| **45** | `02-convert/45-geopackage2pmtiles.sh` | **GPKG → PMTiles**。第2引数で**出力ディレクトリ**可（省略時は入力と同じ場所）。既定 **MINZOOM=0・MAXZOOM=12**（`PMTILES_MINZOOM` / `PMTILES_MAXZOOM`、例: 従来相当は `MAXZOOM=15`）。`ogr2ogr` が PATH に無いとき **`GDAL_ENV_SH`** またはリポジトリ隣の HandsOn **`gdal-full/env.sh`** を試行。 |
 | **50** | `02-convert/50-check-pmtiles.sh` | **GDAL の PMTiles ドライバ登録と最小 GPKG→PMTiles 書き出し**の環境スモーク。特定の本番 GPKG／PMTiles との論理突合はしない。 |
 | （検図） | `03-analysis/maplibre/serve.py` | PMTiles を **Range 対応 HTTP** で配信。`python -m http.server` では足りない。 |
 
