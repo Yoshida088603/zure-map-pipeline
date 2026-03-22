@@ -5,6 +5,7 @@
 #   第2引数あり時: そのディレクトリに <入力ベース名>.pmtiles（存在しなければ mkdir -p）
 # 環境変数 PMTILES_OUT_DIR で出力先を指定してもよい（第2引数が優先）
 # 環境変数 PMTILES_MINZOOM / PMTILES_MAXZOOM（既定 0 / 12。細かい縮尺は 15 等）
+# 環境変数 PMTILES_OUT_BASENAME … 出力ファイル名の本体（拡張子なし）。省略時は入力 GPKG のベース名
 # 既定入力: data/04-merge-geopackage/土地活用推進調査_merged.gpkg
 # GDAL: 基本は 20 と同じ（PATH の ogr2ogr / ogrinfo）。無いときだけ次を順に試す:
 #   GDAL_ENV_SH、リポジトリ隣の MapLibre HandsOn gdal-full/env.sh（docs/plan.md の配置例）
@@ -56,15 +57,16 @@ fi
 GPKG="$(cd "$(dirname "$GPKG")" && pwd)/$(basename "$GPKG")"
 DIR="$(dirname "$GPKG")"
 BASE="$(basename "$GPKG" .gpkg)"
+OUT_BASE="${PMTILES_OUT_BASENAME:-$BASE}"
 OUT_PARENT="${2:-${PMTILES_OUT_DIR:-}}"
 if [[ -n "$OUT_PARENT" ]]; then
   mkdir -p "$OUT_PARENT"
   OUT_PARENT="$(cd "$OUT_PARENT" && pwd)"
-  OUT_PMTILES="$OUT_PARENT/${BASE}.pmtiles"
-  OUT_PARQUET="$OUT_PARENT/${BASE}.parquet"
+  OUT_PMTILES="$OUT_PARENT/${OUT_BASE}.pmtiles"
+  OUT_PARQUET="$OUT_PARENT/${OUT_BASE}.parquet"
 else
-  OUT_PMTILES="$DIR/${BASE}.pmtiles"
-  OUT_PARQUET="$DIR/${BASE}.parquet"
+  OUT_PMTILES="$DIR/${OUT_BASE}.pmtiles"
+  OUT_PARQUET="$DIR/${OUT_BASE}.parquet"
 fi
 
 T_SRS="-t_srs EPSG:3857"
