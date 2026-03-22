@@ -107,13 +107,99 @@ var keiZureFillPaint = {
   'fill-outline-color': 'rgba(0,0,0,0.15)',
 };
 
+/** クリック選択ポリゴン（ずれデータ）の上乗せ。凡例色と区別できるオレンジ系 */
+var zureSelectedFillPaint = {
+  'fill-color': '#ff6f00',
+  'fill-opacity': 0.42,
+  'fill-outline-color': '#bf360c',
+};
+
 var allKeiFillLayerIds = [];
+/** 各系の選択ハイライトレイヤ id（クリア時にまとめて無効化） */
+var zureHighlightLayerIds = [];
+/** 地図空白クリックで選択解除するときのヒットテスト対象（fill 本体） */
+var zureHitTestFillLayerIds = [];
+var zureMapClickClearInstalled = false;
+var zurePolygonGeomFilter = ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]];
+
+function zureHighlightNeverMatchFilter() {
+  return ['all', zurePolygonGeomFilter, ['==', ['literal', 1], 0]];
+}
+
+function buildZurePropertyFilter(props) {
+  if (!props) return ['==', ['literal', 1], 0];
+  var parts = [];
+  function addEqNum(key) {
+    if (props[key] == null || props[key] === '') return;
+    var n = Number(props[key]);
+    if (Number.isNaN(n)) return;
+    parts.push(['==', ['to-number', ['get', key]], n]);
+  }
+  function addEqStr(key) {
+    if (props[key] == null || props[key] === '') return;
+    parts.push(['==', ['get', key], String(props[key])]);
+  }
+  addEqNum('PREFCODE');
+  addEqNum('CITYCODE');
+  addEqNum('ooaza');
+  addEqNum('koaza');
+  addEqNum('jyotai');
+  addEqStr('chiban');
+  addEqStr('zumen');
+  if (props.id != null && props.id !== '') {
+    var idn = Number(props.id);
+    if (!Number.isNaN(idn)) parts.push(['==', ['to-number', ['get', 'id']], idn]);
+  }
+  if (parts.length === 0) return ['==', ['literal', 1], 0];
+  if (parts.length === 1) return parts[0];
+  return ['all'].concat(parts);
+}
+
+function buildZureHighlightFilter(props) {
+  return ['all', zurePolygonGeomFilter, buildZurePropertyFilter(props)];
+}
+
+function clearZureSelectionHighlight() {
+  var never = zureHighlightNeverMatchFilter();
+  zureHighlightLayerIds.forEach(function (id) {
+    if (map.getLayer(id)) map.setFilter(id, never);
+  });
+}
+
+function setZureSelectionHighlight(highlightLayerId, props) {
+  clearZureSelectionHighlight();
+  if (!map.getLayer(highlightLayerId)) return;
+  map.setFilter(highlightLayerId, buildZureHighlightFilter(props));
+}
+
+function installZureSelectionClearOnMapClick() {
+  if (zureMapClickClearInstalled) return;
+  zureMapClickClearInstalled = true;
+  map.on('click', function (e) {
+    if (!zureHitTestFillLayerIds.length) return;
+    var hit = map.queryRenderedFeatures(e.point, { layers: zureHitTestFillLayerIds });
+    if (!hit.length) clearZureSelectionHighlight();
+  });
+}
+
+function installZureHoverCursor(layerIds) {
+  layerIds.forEach(function (lid) {
+    map.on('mouseenter', lid, function () {
+      map.getCanvas().style.cursor = 'pointer';
+    });
+    map.on('mouseleave', lid, function () {
+      map.getCanvas().style.cursor = '';
+    });
+  });
+}
 
 map.on('load', () => {
   if (isAllKeiPmtilesMode) {
+    zureHighlightLayerIds = [];
     ALL_KEI_PMTILES_STEMS.forEach(function (stem) {
       var sid = 'pmtiles_kei_' + stem;
       var lid = sid + '_fill';
+      var hlid = sid + '_selected';
       var url = DATA + '/05-pmtiles/' + stem + '.pmtiles';
       map.addSource(sid, {
         type: 'vector',
@@ -127,8 +213,20 @@ map.on('load', () => {
         filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
         paint: keiZureFillPaint,
       });
+      map.addLayer({
+        id: hlid,
+        type: 'fill',
+        source: sid,
+        'source-layer': 'kozu_merged',
+        filter: zureHighlightNeverMatchFilter(),
+        paint: zureSelectedFillPaint,
+      });
       allKeiFillLayerIds.push(lid);
+      zureHighlightLayerIds.push(hlid);
     });
+    zureHitTestFillLayerIds = allKeiFillLayerIds.slice();
+    installZureSelectionClearOnMapClick();
+    installZureHoverCursor(allKeiFillLayerIds);
     return;
   }
 
@@ -146,6 +244,18 @@ map.on('load', () => {
       filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
       paint: Object.assign({}, keiZureFillPaint, { 'fill-opacity': 0.6 }),
     });
+    map.addLayer({
+      id: 'pmtiles_09kei_z12_selected',
+      type: 'fill',
+      source: 'pmtiles_09kei_z12',
+      'source-layer': 'kozu_merged',
+      filter: zureHighlightNeverMatchFilter(),
+      paint: Object.assign({}, zureSelectedFillPaint, { 'fill-opacity': 0.48 }),
+    });
+    zureHighlightLayerIds = ['pmtiles_09kei_z12_selected'];
+    zureHitTestFillLayerIds = ['pmtiles_09kei_z12_fill'];
+    installZureSelectionClearOnMapClick();
+    installZureHoverCursor(['pmtiles_09kei_z12_fill']);
     return;
   }
 
@@ -244,6 +354,18 @@ map.on('load', () => {
       'fill-outline-color': 'rgba(0,0,0,0.2)',
     },
   });
+  map.addLayer({
+    id: 'pmtiles_zure_selected',
+    type: 'fill',
+    source: 'pmtiles_zure',
+    'source-layer': 'kozu_merged',
+    filter: zureHighlightNeverMatchFilter(),
+    paint: zureSelectedFillPaint,
+  });
+  zureHighlightLayerIds = ['pmtiles_zure_selected'];
+  zureHitTestFillLayerIds = ['pmtiles_zure_fill'];
+  installZureSelectionClearOnMapClick();
+  installZureHoverCursor(['pmtiles_zure_fill']);
 
   // PMTiles（土地活用推進調査・マージ済み）。bounds: 約114.5,32.2 - 142.2,44.1（全国）
   var tochiPmtilesUrl = DATA + '/04-merge-geopackage/土地活用推進調査_merged.pmtiles';
@@ -521,6 +643,7 @@ map.on('click', 'pmtiles_zure_fill', (e) => {
   var lng = e.lngLat.lng.toFixed(6);
   var lat = e.lngLat.lat.toFixed(6);
   var p = e.features[0].properties;
+  setZureSelectionHighlight('pmtiles_zure_selected', p);
   showAttributePanel('公図と現況のずれ', lng, lat, p, zureLabel, '公図と現況のずれ_属性');
 });
 
@@ -538,6 +661,7 @@ if (isZ12KeiMode) {
     var lng = e.lngLat.lng.toFixed(6);
     var lat = e.lngLat.lat.toFixed(6);
     var p = e.features[0].properties;
+    setZureSelectionHighlight('pmtiles_09kei_z12_selected', p);
     showAttributePanel('公図と現況のずれ（z0–11 検図）', lng, lat, p, zureLabel, '公図と現況のずれ_z12_属性');
   });
 }
@@ -552,6 +676,7 @@ if (isAllKeiPmtilesMode) {
     var lng = e.lngLat.lng.toFixed(6);
     var lat = e.lngLat.lat.toFixed(6);
     var p = top.properties;
+    setZureSelectionHighlight('pmtiles_kei_' + stem + '_selected', p);
     showAttributePanel('公図と現況のずれ（系' + stem + '・重畳）', lng, lat, p, zureLabel, '公図と現況のずれ_全系_' + stem);
   });
 }
