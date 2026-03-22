@@ -170,7 +170,7 @@ flowchart TD
 | **47** | `47-geopackage-per-kei2pmtiles.sh` | `geopackage_per_kei/*.gpkg` | **系別 GPKG をそのまま** `05-pmtiles/NN.pmtiles`（**既定 z0–11**、45 と同じ MAX 既定） |
 | **50** | `50-check-pmtiles.sh` | GDAL 環境 | PMTiles ドライバ登録と**最小**書き出しテスト。本番 GPKG との突合なし |
 
-- **MapLibre** `serve.py`: PMTiles の Range 配信。参照パスは `main.js` 設定（`04-merge-geopackage` や `05-pmtiles` のどちらでも可）。
+- **MapLibre** `serve.py`: Range 配信・**8080 固定**。`main.js` は `/data` 基準。
 - **スモーク**（1 件 E2E）は主幹外。**任意**で `02-convert/scripts-smoke/` 等に `single_csv_to_pmtiles.sh` 相当を記載。
 
 ### 4.4 段階一覧と補足
@@ -194,6 +194,7 @@ flowchart TD
 - **表示（`main.js`・`?mode=z12`）**: 地図の **`maxZoom` は 22**（OSM ベースマップと同程度）。ベクタソースはメタデータ上 z11 までのため、**それ以降は MapLibre の overzoom**（z11 タイルの拡大表示）とする。これによりホイール／ピンチでの拡大操作が止まらない。
 - **URL 互換**: クエリ名 `?mode=z12`（および旧 `?mode=z13`）は**そのまま**（ブックマーク互換）。中身の PMTiles は z0–11。
 - **全系重畳検図**: `?mode=all-kei` で `data/05-pmtiles` の系別 PMTiles を複数ソースとして同時表示（実装は `main.js` の `ALL_KEI_PMTILES_STEMS` と一致させる）。
+- **検図**: `zure-map-pipeline/03-analysis/maplibre` で `python3 serve.py`（8080）。**カレントはリポジトリルート配下**（README の「検図」節）。`http://localhost:8080/...` を開く。
 - **参照実装**: `03-analysis/maplibre/main.js`（系別／全系モード分岐）、`02-convert/47-geopackage-per-kei2pmtiles.sh`。
 
 **HandsOn 側との差分で決めること**
