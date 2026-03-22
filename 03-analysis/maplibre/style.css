@@ -4,7 +4,8 @@ body {
 }
 html,
 body,
-#map {
+#map,
+.map-wrap-z13 {
   height: 100%;
 }
 
@@ -121,4 +122,46 @@ body,
 }
 .tochi-panel-body td {
   word-break: break-all;
+}
+
+/* index-z13-09kei.html 検図用 */
+.map-wrap-z13 {
+  position: relative;
+  height: 100%;
+}
+.map-wrap-z13 #map {
+  height: 100%;
+}
+.z13-hud {
+  position: absolute;
+  z-index: 2;
+  bottom: 28px;
+  left: 12px;
+  max-width: min(420px, calc(100vw - 24px));
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+.z13-hud code {
+  font-size: 11px;
+  word-break: break-all;
+}
+.z13-popup table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.z13-popup th,
+.z13-popup td {
+  border: 1px solid #ddd;
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+.z13-popup th {
+  background: #f5f5f5;
+  white-space: nowrap;
 }

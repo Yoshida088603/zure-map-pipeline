@@ -66,6 +66,7 @@ def run(port=8080):
     os.chdir(repo_root)
     server = http.server.HTTPServer(("", port), RangeRequestHandler)
     print(f"PMTiles 対応サーバー（ルート={repo_root}）: http://localhost:{port}/03-analysis/maplibre/index.html")
+    print(f"  系9・z13 検図: http://localhost:{port}/03-analysis/maplibre/index-z13-09kei.html")
     print("Ctrl+C で停止")
     server.serve_forever()
 
