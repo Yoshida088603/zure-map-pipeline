@@ -37,6 +37,8 @@ data/02-raw-data-preview/*.txt
 # --- data: 中間〜成果（巨大・生成物。小さな README / .md / .geojson はコミット可）---
 data/**/*.gpkg
 data/**/*.pmtiles
+# 系別 PMTiles（47 出力）— GitHub Pages 等で参照するためリポジトリに含める
+!data/05-pmtiles/*.pmtiles
 data/**/*.mbtiles
 data/**/*.tif
 data/**/*.tiff
