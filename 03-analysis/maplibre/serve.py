@@ -3,7 +3,7 @@
 PMTiles 用 HTTP（Content-Length / Range 対応）。
 リポジトリルートをカレントにして起動し、/data 以下の PMTiles 等を配信する。
 
-使い方（リポジトリルートがカレントになるよう、このファイルの場所から 3 つ上をルートに設定）:
+使い方（リポジトリルートがカレントになるよう、このファイルの場所から 2 つ上 = zure-map-pipeline ルート）:
   cd /path/to/zure-map-pipeline/03-analysis/maplibre && python3 serve.py
 """
 import http.server
@@ -62,7 +62,7 @@ class RangeRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 def run(port=8080):
     here = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.normpath(os.path.join(here, "..", "..", ".."))
+    repo_root = os.path.normpath(os.path.join(here, "..", ".."))
     os.chdir(repo_root)
     server = http.server.HTTPServer(("", port), RangeRequestHandler)
     print(f"PMTiles 対応サーバー（ルート={repo_root}）: http://localhost:{port}/03-analysis/maplibre/index.html")
