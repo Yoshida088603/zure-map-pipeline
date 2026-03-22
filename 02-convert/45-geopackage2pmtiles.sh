@@ -6,6 +6,14 @@
 # 環境変数 PMTILES_OUT_DIR で出力先を指定してもよい（第2引数が優先）
 # 環境変数 PMTILES_MINZOOM / PMTILES_MAXZOOM（既定 0 / 12。細かい縮尺は 15 等）
 # 環境変数 PMTILES_OUT_BASENAME … 出力ファイル名の本体（拡張子なし）。省略時は入力 GPKG のベース名
+#
+# 【1 タイルあたりの件数・バイト上限】
+# 本スクリプトは既定で MAX_FEATURES / MAX_SIZE を **2^31-1** に設定し、
+# GDAL ドライバ既定（約 20 万件・約 500KB/タイル）による **明示的な切り捨てを避ける**。
+# （メモリ・MVT 仕様・他レイヤー処理で失敗する場合は別。完全保証ではない。）
+# 旧ドライバ既定に戻す: PMTILES_MAX_FEATURES=200000 PMTILES_MAX_SIZE=500000
+# 任意: PMTILES_SIMPLIFICATION=0 … 単純化を弱める（タイル容量は増える）
+#       PMTILES_BUFFER=128     … タイル境界のクリップ緩和
 # 既定入力: data/04-merge-geopackage/土地活用推進調査_merged.gpkg
 # GDAL: 基本は 20 と同じ（PATH の ogr2ogr / ogrinfo）。無いときだけ次を順に試す:
 #   GDAL_ENV_SH、リポジトリ隣の MapLibre HandsOn gdal-full/env.sh（docs/plan.md の配置例）
@@ -73,9 +81,23 @@ T_SRS="-t_srs EPSG:3857"
 PMTILES_MINZOOM="${PMTILES_MINZOOM:-0}"
 PMTILES_MAXZOOM="${PMTILES_MAXZOOM:-12}"
 
-echo "Converting: $GPKG -> $OUT_PMTILES (MINZOOM=$PMTILES_MINZOOM MAXZOOM=$PMTILES_MAXZOOM)"
+# 既定: ドライバの「タイル内件数・バイト」切り捨てを実質無効化（上書き可）
+PMTILES_MAX_FEATURES="${PMTILES_MAX_FEATURES:-2147483647}"
+PMTILES_MAX_SIZE="${PMTILES_MAX_SIZE:-2147483647}"
+
+PMTILES_EXTRA_DSCO=(
+  -dsco "MAX_FEATURES=$PMTILES_MAX_FEATURES"
+  -dsco "MAX_SIZE=$PMTILES_MAX_SIZE"
+)
+[[ -n "${PMTILES_SIMPLIFICATION:-}" ]] && PMTILES_EXTRA_DSCO+=( -dsco "SIMPLIFICATION=$PMTILES_SIMPLIFICATION" )
+[[ -n "${PMTILES_SIMPLIFICATION_MAX_ZOOM:-}" ]] && PMTILES_EXTRA_DSCO+=( -dsco "SIMPLIFICATION_MAX_ZOOM=$PMTILES_SIMPLIFICATION_MAX_ZOOM" )
+[[ -n "${PMTILES_BUFFER:-}" ]] && PMTILES_EXTRA_DSCO+=( -dsco "BUFFER=$PMTILES_BUFFER" )
+[[ -n "${PMTILES_EXTENT:-}" ]] && PMTILES_EXTRA_DSCO+=( -dsco "EXTENT=$PMTILES_EXTENT" )
+
+echo "Converting: $GPKG -> $OUT_PMTILES (MINZOOM=$PMTILES_MINZOOM MAXZOOM=$PMTILES_MAXZOOM MAX_FEATURES=$PMTILES_MAX_FEATURES MAX_SIZE=$PMTILES_MAX_SIZE)"
 err=$(ogr2ogr -skipfailures -nlt PROMOTE_TO_MULTI $T_SRS \
   -dsco "MINZOOM=$PMTILES_MINZOOM" -dsco "MAXZOOM=$PMTILES_MAXZOOM" \
+  "${PMTILES_EXTRA_DSCO[@]}" \
   -f "PMTiles" "$OUT_PMTILES" "$GPKG" 2>&1) || true
 if [[ -f "$OUT_PMTILES" ]]; then
   echo "Done. Output: $OUT_PMTILES"
@@ -94,9 +116,11 @@ if ! ogr2ogr -skipfailures $T_SRS -f Parquet -lco GEOMETRY_ENCODING=WKB "$OUT_PA
 fi
 [[ -f "$OUT_PARQUET" ]] || { echo "Error: Parquet が生成されませんでした。" >&2; exit 1; }
 
-echo "Writing PMTiles: $OUT_PMTILES (MINZOOM=$PMTILES_MINZOOM MAXZOOM=$PMTILES_MAXZOOM)"
+echo "Writing PMTiles: $OUT_PMTILES (MINZOOM=$PMTILES_MINZOOM MAXZOOM=$PMTILES_MAXZOOM MAX_FEATURES=$PMTILES_MAX_FEATURES MAX_SIZE=$PMTILES_MAX_SIZE)"
 pmt_err=$(ogr2ogr -skipfailures -s_srs EPSG:3857 $T_SRS \
-  -dsco "MINZOOM=$PMTILES_MINZOOM" -dsco "MAXZOOM=$PMTILES_MAXZOOM" -f "PMTiles" \
+  -dsco "MINZOOM=$PMTILES_MINZOOM" -dsco "MAXZOOM=$PMTILES_MAXZOOM" \
+  "${PMTILES_EXTRA_DSCO[@]}" \
+  -f "PMTiles" \
   "$OUT_PMTILES" "$OUT_PARQUET" 2>&1) || true
 
 if [[ -f "$OUT_PMTILES" ]]; then

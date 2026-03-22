@@ -1,12 +1,44 @@
+html,
 body {
   margin: 0;
   padding: 0;
-}
-html,
-body,
-#map,
-.map-wrap-z13 {
   height: 100%;
+}
+
+.map-mode-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 12px;
+  box-sizing: border-box;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #ddd;
+}
+.map-mode-bar a {
+  color: #1a5fb4;
+}
+.map-mode-bar-hint {
+  font-size: 11px;
+  color: #555;
+}
+.map-mode-bar-hint code {
+  font-size: 10px;
+}
+
+#map {
+  position: absolute;
+  top: 36px;
+  left: 0;
+  width: 100%;
+  bottom: 0;
 }
 
 .popup-takakuten {
@@ -124,18 +156,24 @@ body,
   word-break: break-all;
 }
 
-/* index-z13-09kei.html 検図用 */
-.map-wrap-z13 {
-  position: relative;
-  height: 100%;
+/* ?mode=z12（または互換 z13）時のみ表示 */
+.z12-kei-only {
+  display: none !important;
 }
-.map-wrap-z13 #map {
-  height: 100%;
+body.mode-z12-kei .z12-kei-hud.z12-kei-only {
+  display: block !important;
 }
-.z13-hud {
-  position: absolute;
-  z-index: 2;
-  bottom: 28px;
+body.mode-z12-kei .z12-kei-console.z12-kei-only:empty {
+  display: none !important;
+}
+body.mode-z12-kei .z12-kei-console.z12-kei-only:not(:empty) {
+  display: block !important;
+}
+
+.z12-kei-hud {
+  position: fixed;
+  z-index: 19;
+  bottom: 16px;
   left: 12px;
   max-width: min(420px, calc(100vw - 24px));
   padding: 10px 12px;
@@ -146,22 +184,27 @@ body,
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   pointer-events: none;
 }
-.z13-hud code {
+.z12-kei-hud code {
   font-size: 11px;
   word-break: break-all;
 }
-.z13-popup table {
-  border-collapse: collapse;
-  font-size: 12px;
-}
-.z13-popup th,
-.z13-popup td {
-  border: 1px solid #ddd;
-  padding: 4px 6px;
-  text-align: left;
-  vertical-align: top;
-}
-.z13-popup th {
-  background: #f5f5f5;
-  white-space: nowrap;
+.z12-kei-console {
+  position: fixed;
+  z-index: 19;
+  top: 44px;
+  left: 8px;
+  right: 8px;
+  max-height: 30%;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #b91c1c;
+  background: rgba(255, 248, 248, 0.96);
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  pointer-events: none;
 }

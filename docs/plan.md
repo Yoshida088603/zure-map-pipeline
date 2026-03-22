@@ -44,6 +44,8 @@
 
 ### 2.3 AI・エージェント向け（必須）
 
+- **作成・削除**: 対象パスを列挙してユーザーに示し、**Yes（許可）があるまで実行しない**（ツール含む）。
+- **新規ファイル**: **[§5](#sec-5) に無いパス**は**原則作らない**・**その案は提案しない**。**既存ファイルへの追記・集約**で対応する（例: `03-analysis/maplibre` の `index.html` / `main.js`）。
 - **`.sh` はオーナーがスタブを先に置いてから**実装・デバッグ。**明示の指示がない限り `.sh` を新規作成しない**。`.sh` にないスクリプト実行も原則しない。
 - **`/home/ubuntu/work/cursor/maplibre/MapLibre-HandsOn-Beginner`（配下含む）の削除・移動・`rm -rf` は行わない**。削除は**ユーザーのみ**。計画に「削除」とあってもエージェントが実行してはならない。
 
@@ -165,6 +167,7 @@ flowchart TD
 | **40** | `40-merge-geopackage.sh` | `04-merge-geopackage/` | 用途別マージ（`zure` は系別 GPKG を 1 本化） |
 | **42** | `42-check-merge-geopackage.sh` | 統合 GPKG | **ogrinfo** 先頭部の表示（目視）。合格判定ロジックなし |
 | **45** | `45-geopackage2pmtiles.sh` | 1 本の GPKG | **既定は** `04-merge-geopackage` 内に `.pmtiles` を**同階層出力**。Parquet 経由フォールバックあり |
+| **47** | `47-geopackage-per-kei2pmtiles.sh` | `geopackage_per_kei/*.gpkg` | **系別 GPKG をそのまま** `05-pmtiles/NN.pmtiles`（**既定 z0–11**、45 と同じ MAX 既定） |
 | **50** | `50-check-pmtiles.sh` | GDAL 環境 | PMTiles ドライバ登録と**最小**書き出しテスト。本番 GPKG との突合なし |
 
 - **MapLibre** `serve.py`: PMTiles の Range 配信。参照パスは `main.js` 設定（`04-merge-geopackage` や `05-pmtiles` のどちらでも可）。
@@ -179,9 +182,18 @@ flowchart TD
 | 3 | 検証 | **30** | 個別 GPKG の SHP↔GPKG 件数突合 |
 | 4 | マージ | **40** → `data/04-merge-geopackage` | 統合 GPKG |
 | 5 | 検証 | **42** | 統合 GPKG の ogrinfo 目視 |
-| 6 | PMTiles | **45** | 既定は **`04-merge-geopackage/*.pmtiles`**（入力 GPKG と同じディレクトリ）。`05-pmtiles` へコピーする運用は任意 |
+| 6 | PMTiles | **45**（1 本）／**47**（系別一括） | **45** 既定 **`04-merge-geopackage/*.pmtiles`**（z0–12）。**47** → **`05-pmtiles/NN.pmtiles`**（既定 z0–11） |
 | 7 | 検証 | **50** | PMTiles **環境**スモーク（ドライバ・最小書き出し） |
 | 8 | MapLibre | `03-analysis/maplibre` + `serve.py` | 定義 F、`06-analysis-result` |
+
+<a id="sec-4-5"></a>
+
+### 4.5 系別ずれまっぷ PMTiles 検図（確定）
+
+- **ビルド（`47`）**: `geopackage_per_kei/NN.gpkg` → `data/05-pmtiles/NN.pmtiles`。**タイルの最大ズームは既定 `MAXZOOM=11`**（容量・ビルド時間との兼ね合い）。`PMTILES_MAXZOOM=12` で z12 まで出すことは可能だが、**系別検図の既定運用は z11 まで**とする。
+- **表示（`main.js`・`?mode=z12`）**: 地図の **`maxZoom` は 22**（OSM ベースマップと同程度）。ベクタソースはメタデータ上 z11 までのため、**それ以降は MapLibre の overzoom**（z11 タイルの拡大表示）とする。これによりホイール／ピンチでの拡大操作が止まらない。
+- **URL 互換**: クエリ名 `?mode=z12`（および旧 `?mode=z13`）は**そのまま**（ブックマーク互換）。中身の PMTiles は z0–11。
+- **参照実装**: `03-analysis/maplibre/main.js`（系別モード分岐）、`02-convert/47-geopackage-per-kei2pmtiles.sh`。
 
 **HandsOn 側との差分で決めること**
 
@@ -211,6 +223,7 @@ Cursor/zure-map-pipeline/
 │   ├── 40-merge-geopackage.sh
 │   ├── 42-check-merge-geopackage.sh
 │   ├── 45-geopackage2pmtiles.sh
+│   ├── 47-geopackage-per-kei2pmtiles.sh
 │   └── 50-check-pmtiles.sh
 ├── 03-analysis/
 │   └── maplibre/
@@ -241,7 +254,7 @@ Cursor/zure-map-pipeline/
 
 - **GeoPackage** に統一（`geoparquet` 誤用禁止）。スクリプト・フォルダ名も `geopackage` / `gpkg` で揃える。
 - **綴り**: `04-merge-geopackage`（`marge` 禁止）、`03-analysis` / `06-analysis-result`（`analys` 禁止）。
-- **番号**: 10 → 30 → 40 → 42 → 45 → 50（主幹順）。
+- **番号**: 10 → 30 → 40 → 42 → 45（または系別の **47**）→ 50（主幹順）。
 - **MapLibre**: `serve.py` と `main.js` の URL／相対パスは**配置確定後**に決める。
 - **Git**: `data/` の巨大物は **`.gitignore`**（LFS 方針はリポジトリで明示）。
 

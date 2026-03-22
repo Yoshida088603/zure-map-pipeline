@@ -2,14 +2,25 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <title>サンプル</title>
-    <meta name="description" content="サンプルです" />
+    <title>MapLibre ビューア（zure-map-pipeline）</title>
+    <meta
+      name="description"
+      content="serve.py で配信。通常は複数レイヤー、?mode=z12 で系別 PMTiles（z0–11）のみ検図。既定 05-pmtiles/09.pmtiles。?kei=09 または ?pmtiles= で変更。?mode=z13 は互換。"
+    />
     <link href="style.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.css" rel="stylesheet" />
   </head>
   <body>
+    <nav class="map-mode-bar" aria-label="表示モード">
+      <a href="index.html">通常表示</a>
+      <span aria-hidden="true">|</span>
+      <a href="index.html?mode=z12">系別 z0–11 検図</a>
+      <span class="map-mode-bar-hint">（<code>?mode=z12</code>・<code>?kei=09</code>・<code>?pmtiles=05-pmtiles/…</code>）</span>
+    </nav>
     <div id="map"></div>
+    <div id="z12-kei-hud" class="z12-kei-hud z12-kei-only"></div>
+    <pre id="z12-kei-console" class="z12-kei-console z12-kei-only" aria-label="診断ログ"></pre>
     <script src="https://unpkg.com/pmtiles@4.4.0/dist/pmtiles.js"></script>
     <script src="main.js"></script>
   </body>

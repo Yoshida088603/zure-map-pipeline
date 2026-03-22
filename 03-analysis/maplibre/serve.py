@@ -5,11 +5,13 @@ PMTiles 用 HTTP（Content-Length / Range 対応）。
 
 使い方（リポジトリルートがカレントになるよう、このファイルの場所から 2 つ上 = zure-map-pipeline ルート）:
   cd /path/to/zure-map-pipeline/03-analysis/maplibre && python3 serve.py
+  python3 serve.py 8765   # 8080 が使用中のとき別ポート
 """
 import http.server
 import io
 import os
 import re
+import sys
 
 
 class RangeRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -66,10 +68,28 @@ def run(port=8080):
     os.chdir(repo_root)
     server = http.server.HTTPServer(("", port), RangeRequestHandler)
     print(f"PMTiles 対応サーバー（ルート={repo_root}）: http://localhost:{port}/03-analysis/maplibre/index.html")
-    print(f"  系9・z13 検図: http://localhost:{port}/03-analysis/maplibre/index-z13-09kei.html")
+    print("  系別 z0–11 検図: 上記に ?mode=z12 （互換 ?mode=z13。既定 05-pmtiles/09.pmtiles、?kei=09 または ?pmtiles=…）")
     print("Ctrl+C で停止")
     server.serve_forever()
 
 
 if __name__ == "__main__":
-    run(8080)
+    default_port = 8080
+    if len(sys.argv) > 1:
+        try:
+            default_port = int(sys.argv[1])
+        except ValueError:
+            print("使い方: python3 serve.py [ポート番号]  例: python3 serve.py 8765", file=sys.stderr)
+            sys.exit(2)
+    try:
+        run(default_port)
+    except OSError as e:
+        if e.errno == 98:  # Linux: EADDRINUSE
+            print(
+                f"Error: ポート {default_port} は既に使用中です（Address already in use）。\n"
+                f"  別ポートで起動: python3 serve.py 8765\n"
+                f"  占有プロセス確認: ss -tlnp | grep ':{default_port}'  または  lsof -i :{default_port}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        raise

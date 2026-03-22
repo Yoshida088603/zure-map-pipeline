@@ -4,13 +4,56 @@ maplibregl.addProtocol('pmtiles', protocol.tile);
 // serve.py がリポジトリルートをドキュメントルートにする場合のデータ URL 基底
 var DATA = location.origin + '/data';
 
+var params = new URLSearchParams(location.search);
+// 系別単体検図: ?mode=z12（URL 互換）。PMTiles のタイルは z0–11 まで。地図の maxZoom は高めにし overzoom で拡大操作可能にする。
+// 既定 PMTiles: 47-geopackage-per-kei2pmtiles.sh が geopackage_per_kei/NN.gpkg → 05-pmtiles/NN.pmtiles
+// ?kei=09 で 05-pmtiles/09.pmtiles、?pmtiles= で任意パス（data/ からの相対）
+var _mode = params.get('mode');
+var isZ12KeiMode = _mode === 'z12' || _mode === 'z13';
+var _kei = params.get('kei');
+var _keiStem = _kei && /^[0-9]{2}$/.test(_kei) ? _kei : null;
+var z12KeiPmtilesRel =
+  params.get('pmtiles') || (_keiStem ? '05-pmtiles/' + _keiStem + '.pmtiles' : '05-pmtiles/09.pmtiles');
+
+function z12KeiLogLine(msg, err) {
+  var line = msg + (err && err.message != null ? ': ' + err.message : err ? ': ' + String(err) : '');
+  console.error(line);
+  var el = document.getElementById('z12-kei-console');
+  if (el) {
+    el.textContent = el.textContent ? el.textContent + '\n' + line : line;
+  }
+}
+
+if (isZ12KeiMode) {
+  document.body.classList.add('mode-z12-kei');
+  window.addEventListener('error', function (ev) {
+    z12KeiLogLine('window.error', ev.error || ev.message);
+  });
+  window.addEventListener('unhandledrejection', function (ev) {
+    z12KeiLogLine('unhandledrejection', ev.reason);
+  });
+  if (location.protocol === 'file:') {
+    z12KeiLogLine('file:// では /data が使えません。serve.py 経由の http://…/index.html?mode=z12 を開いてください');
+  }
+  var z12Hud = document.getElementById('z12-kei-hud');
+  if (z12Hud) {
+    z12Hud.textContent =
+      'PMTiles: ' +
+        z12KeiPmtilesRel +
+        '（タイル z0–11・地図は overzoom で拡大可。?kei=09 / ?pmtiles=…）';
+  }
+}
+
 // 公図と現況のずれデータは東京付近など全国に分布。初期視点はずれデータの例の座標。
 // 庭園路ポリゴンは神戸・大阪付近、工業用地は東京付近。
+// ?mode=z12 … ベクタは PMTiles（z11 まで）。maxZoom は 22 にしてホイール／ピンチで拡大続行（z11 タイルの overzoom）
 var map = new maplibregl.Map({
   container: 'map',
   style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json', // 地図のスタイル
-  center: [139.619109, 35.768183], // 公図と現況のずれの例（経度・緯度）
-  zoom: 12, // minzoom=0, maxzoom=15 の範囲内
+  center: isZ12KeiMode ? [139.45, 35.68] : [139.619109, 35.768183],
+  zoom: isZ12KeiMode ? 8 : 12,
+  minZoom: 0,
+  maxZoom: 22,
 });
 
 // 背景スタイル（osm-bright-ja）で参照される POI アイコンが不足している場合の警告を抑える
@@ -21,8 +64,45 @@ map.on('styleimagemissing', (e) => {
   }
 });
 
+map.on('error', (e) => {
+  console.error('MapLibre error:', e);
+  if (isZ12KeiMode) {
+    z12KeiLogLine('MapLibre map.error', e.error || e);
+  }
+});
+
 // ポリゴンデータを表示する
 map.on('load', () => {
+  if (isZ12KeiMode) {
+    var z12KeiUrl = DATA + '/' + z12KeiPmtilesRel.replace(/^\//, '');
+    map.addSource('pmtiles_09kei_z12', {
+      type: 'vector',
+      url: 'pmtiles://' + z12KeiUrl,
+    });
+    map.addLayer({
+      id: 'pmtiles_09kei_z12_fill',
+      type: 'fill',
+      source: 'pmtiles_09kei_z12',
+      'source-layer': 'kozu_merged',
+      filter: ['in', ['geometry-type'], ['literal', ['Polygon', 'MultiPolygon']]],
+      paint: {
+        // step は「閾値, 色」を交互に並べ、最後は必ず 閾値+色のペアで終わる（末尾に色だけ余分は不可）
+        'fill-color': [
+          'step',
+          ['coalesce', ['-', ['get', 'BFR_RANK'], ['get', 'BFR_GOSA']], -1],
+          '#cccccc',
+          0.1, '#87ceeb',
+          0.3, '#98fb98',
+          1, '#fffacd',
+          10, '#d3d3d3',
+        ],
+        'fill-opacity': 0.6,
+        'fill-outline-color': 'rgba(0,0,0,0.2)',
+      },
+    });
+    return;
+  }
+
   // 既存: GeoJSON（工業用地）
   map.addSource('industrial_area', {
     type: 'geojson',
@@ -117,11 +197,10 @@ map.on('load', () => {
         'step',
         ['coalesce', ['-', ['get', 'BFR_RANK'], ['get', 'BFR_GOSA']], -1],
         '#cccccc',
-        0.1, '#87ceeb',   // 精度の高い地域（10cm未満）
-        0.3, '#98fb98',   // 小さなずれ（10cm以上30cm未満）
-        1, '#fffacd',     // ずれのある地域（30cm以上1m未満）
-        10, '#ffb6c1',    // 大きなずれ（1m以上10m未満）
-        '#d3d3d3'         // きわめて大きなずれ（10m以上）
+        0.1, '#87ceeb', // 〜30cm帯（step 上は [0.1,0.3)）
+        0.3, '#98fb98', // 〜1m帯（[0.3,1)）
+        1, '#fffacd', // 〜10m帯（[1,10)；1m〜10mのピンクは別閾値が無いと同一式では表現不可）
+        10, '#d3d3d3', // 10m以上
       ],
       'fill-opacity': 0.6,
       'fill-outline-color': 'rgba(0,0,0,0.2)',
@@ -238,7 +317,6 @@ map.on('load', () => {
   });
 
   // デバッグ: ソースのロード成否をコンソールで確認
-  map.on('error', (e) => console.error('MapLibre error:', e));
   map.on('sourcedata', (e) => {
     if (e.sourceId === 'pmtiles_tunnel' && e.sourceDataType === 'metadata') {
       console.log('PMTiles source metadata loaded');
@@ -421,3 +499,17 @@ map.on('click', 'pmtiles_gaiku_circle', (e) => {
   var p = e.features[0].properties;
   showAttributePanel('街区基準点', lng, lat, p, gaikuLabel, '街区基準点_属性');
 });
+
+if (isZ12KeiMode) {
+  map.on('click', 'pmtiles_09kei_z12_fill', (e) => {
+    var lng = e.lngLat.lng.toFixed(6);
+    var lat = e.lngLat.lat.toFixed(6);
+    var p = e.features[0].properties;
+    var bfrR = p.BFR_RANK != null ? Number(p.BFR_RANK) : null;
+    var bfrG = p.BFR_GOSA != null ? Number(p.BFR_GOSA) : null;
+    var zureRy = (bfrR != null && bfrG != null) ? (bfrR - bfrG).toFixed(3) : '—';
+    var p2 = Object.assign({}, p, { zura_ryo: zureRy });
+    var lab = Object.assign({}, zureLabel, { zura_ryo: 'ずれ量（ランク前−ずれ前）' });
+    showAttributePanel('公図と現況のずれ（z0–11 検図）', lng, lat, p2, lab, '公図と現況のずれ_z12_属性');
+  });
+}
