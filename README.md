@@ -65,6 +65,18 @@
 
 コマンド例・経緯の詳細は **`docs/investigation-shp-gpkg-geometry-loss.md`** を参照。
 
+### 全国 `zure` の件数照合（記録）
+
+**2026-03-22**、ローカルで `bash 02-convert/20-shp2geopackage.sh zure`（既定 `ZURE_TWO_PASS=1`、全市区町村）を実行し、`run.log` 末尾の **`verify_gpkg_vs_shp` が成功**した。
+
+| 項目 | 値 |
+|------|-----|
+| 出力ディレクトリ | `data/03-geopackage/shp2geopackage/run_zure_20260322_013135/` |
+| ログ | 上記の `run.log`（逐次出力・件数照合の確証） |
+| 件数照合 | **RAW 公図 SHP 合計 2,312,146 ＝ 各 `NN.gpkg` の `kozu_merged` 合計 2,312,146** |
+
+成果の GPKG は `…/geopackage_per_kei/*.gpkg`。これらとログは容量のため Git 対象外（`.gitignore`）。再現は同コマンドで RAW を置いた環境で実行する。
+
 ### 単一系だけ試す（ラッパ）
 
 ```bash

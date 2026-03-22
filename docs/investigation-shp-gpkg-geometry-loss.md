@@ -90,4 +90,15 @@ ogrinfo -so /tmp/mv2.gpkg | grep -i count
 
 ---
 
+## 6. 全国実行での件数一致（記録）
+
+**2026-03-22**、`20-shp2geopackage.sh zure` を **全市区町村・`ZURE_TWO_PASS=1`（既定）**で実行し、スクリプト内 `verify_gpkg_vs_shp` が **exit 0** となった。
+
+- **出力**: `data/03-geopackage/shp2geopackage/run_zure_20260322_013135/geopackage_per_kei/*.gpkg`
+- **照合結果**（`run.log` 末尾）: **SHP 合計 2,312,146 ＝ 各 GPKG の `kozu_merged` 合計 2,312,146**
+
+（`run.log` と GPKG は容量のため Git に含めない。再現は同一 RAW 配置で `bash 02-convert/20-shp2geopackage.sh zure`。）
+
+---
+
 *調査日: 環境 GDAL 3.8 系 / SpatiaLite 利用可能な `ogr2ogr`。*

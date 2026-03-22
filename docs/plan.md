@@ -302,8 +302,9 @@ Cursor/zure-map-pipeline/
 | **2025-03-21** | **実装移植（HandsOn → `zure-map-pipeline`）**: [§5](#sec-5) に**書かれているファイルだけ**作成・編集。`01-raw-data-preview/10-data-preview.sh`、`02-convert/20`〜`50`、`03-analysis/maplibre`（`index.html`・`main.js`・`serve.py`・`style.css`）、`README.md`。旧 `gdal-full/scripts` 相当を統合（**PostgreSQL 系・GDAL ビルド手順は含めない**）。`25` の CSV 前処理 Python は **`.sh` 内 heredoc**（別名 `.py` は置かない）。`serve.py` はリポジトリルートをドキュメントルートにし、`main.js` の PMTiles 等は **`/data/04-merge-geopackage/`・`/data/05-pmtiles/`** 基準。コミット例: `986c45b`。 |
 | **2025-03-21** | **中間形式の方針**: 分析対象が大容量でも、主幹は **GeoPackage のまま**（GeoParquet を正とする分岐は設けない）。Python 分析は GPKG＋既存スタックで対応。 |
 | **2025-03-21** | **GDAL 動作確認（環境差）**: Cursor エージェント用 Linux では `ogr2ogr` が PATH に無く（`gdal-bin` 未インストール相当）、`02-convert/50-check-pmtiles.sh` は失敗。**HandsOn** の `gdal-full/local/bin/ogr2ogr` は存在するが、`libgdal.so.*` が見つからない状態では実行不可（`source …/gdal-full/env.sh` や `LD_LIBRARY_PATH` 未設定と同様）。**ビルド不要かどうかの最終判断はユーザーの WSL** で `ogr2ogr --version`・`ogrinfo --formats`（PMTiles 等）・`50-check-pmtiles.sh` を実行して行う（手順は [§8.3](#sec-8-3)）。 |
+| **2026-03-22** | **実データ・全国 `20 zure`**: `ZURE_TWO_PASS=1` で RAW 公図 SHP 全系を GPKG 化し、`verify_gpkg_vs_shp` で **SHP 合計 2,312,146 ＝ GPKG 合計** を確認。成果・`run.log` は `data/03-geopackage/shp2geopackage/run_zure_20260322_013135/`（Git 外）。記録は `README.md`・`docs/investigation-shp-gpkg-geometry-loss.md`。 |
 
-**いまの位置づけ（要約）**: 骨格・RAW・**番号付きシェル＋MapLibre の移植**・リモート push・Git 作者まで完了。**未了**: **実データでのパイプライン通し検証**（10→…→MapLibre）、**GDAL 隔離（`env.sh` 相当）は任意のまま**、**WSL での GDAL 実機確認**（エージェント環境では未充足）、HandsOn 手動削除（ユーザーのみ）。
+**いまの位置づけ（要約）**: 骨格・RAW・**番号付きシェル＋MapLibre の移植**・リモート push・Git 作者まで完了。**`20 zure` の全国・件数照合は実データで成功（2026-03-22 記録）**。**未了**: **パイプライン通し**（10→…→MapLibre までの連続検証）、**GDAL 隔離（`env.sh` 相当）は任意のまま**、**WSL での GDAL 実機確認**（エージェント環境では未充足）、HandsOn 手動削除（ユーザーのみ）。
 
 ---
 
@@ -313,7 +314,7 @@ Cursor/zure-map-pipeline/
 2. `02-convert`: **`20`〜`50` 実装済（2025-03-21）**。GDAL 隔離（`env.sh` 相当）は**未決・PATH 前提**。**WSL で `ogr2ogr`・`50-check-pmtiles.sh` が通るかはユーザー環境で確認**（エージェント環境では `ogr2ogr` 不在を確認済み、[§8.3](#sec-8-3)）。
 3. `03-analysis/maplibre`: **移植済（2025-03-21）**。表示パスは `/data` 基準。**スタイル微調整は任意**。
 4. `data/`: RAW は `01-raw-data` にコピー済みを正とする。**2025-03-21 コピー済**。03〜07 とパス定数。PG スクリプトはコピーしない。HandsOn 削除は**ユーザーのみ**。
-5. パイプライン: **スクリプト配置済**。**実運転でゲートどおり通す検証は未**（NG は [§4.1](#sec-4-1)、整合は [§3.2](#sec-3-2)）。
+5. パイプライン: **スクリプト配置済**。**`20 zure`（全国・RAW↔`geopackage_per_kei` 件数）は実データで検証済（2026-03-22）**。**10→…→MapLibre の通しは未**（NG は [§4.1](#sec-4-1)、整合は [§3.2](#sec-3-2)）。
 6. 完了後: ユーザーが HandsOn を手動削除、作業は `zure-map-pipeline` のみ。エージェントは削除しない。**未達**。
 
 <a id="sec-8-3"></a>
