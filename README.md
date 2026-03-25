@@ -1,5 +1,9 @@
 # zure-map-pipeline
 
+**公開サイト（GitHub Pages）:** [**MapLibre ビューアを開く**](https://yoshida088603.github.io/zure-map-pipeline/03-analysis/maplibre/index.html) · [全系 05-pmtiles（`?mode=all-kei`）](https://yoshida088603.github.io/zure-map-pipeline/03-analysis/maplibre/index.html?mode=all-kei)
+
+---
+
 ファイルベースのジオパイプライン（RAW → GeoPackage → マージ → PMTiles → MapLibre）の作業リポジトリです。
 MAX_FEATURES / MAX_SIZE は無限に近づけて、一切捨てない設定推奨（GeopackageからPMTilesに変換する際にジオメトリ落とさないため）
 ## 各スクリプトの役割（`docs/plan.md` §4.2〜4.4 と対応）
