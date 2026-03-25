@@ -1,8 +1,13 @@
 // PMTiles プロトコルを登録（Range リクエスト用）。metadata: true でソースの minzoom/maxzoom を取得
 let protocol = new pmtiles.Protocol({ metadata: true });
 maplibregl.addProtocol('pmtiles', protocol.tile);
-// serve.py がリポジトリルートをドキュメントルートにする場合のデータ URL 基底
-var DATA = location.origin + '/data';
+// data/ への URL 基底。serve.py（ルート＝リポジトリ根）では /data。GitHub Pages の /owner/repo/… では /owner/repo/data。
+var MAPLIBRE_DIR_MARKER = '/03-analysis/maplibre';
+var _pathForData = location.pathname;
+var _markerIdx = _pathForData.indexOf(MAPLIBRE_DIR_MARKER);
+var _repoBase =
+  _markerIdx >= 0 ? _pathForData.slice(0, _markerIdx).replace(/\/+$/, '') : '';
+var DATA = location.origin + _repoBase + '/data';
 
 var params = new URLSearchParams(location.search);
 // 系別単体検図: ?mode=z12（URL 互換）。PMTiles のタイルは z0–11 まで。地図の maxZoom は高めにし overzoom で拡大操作可能にする。
