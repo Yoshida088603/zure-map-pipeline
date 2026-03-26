@@ -11,18 +11,18 @@ var DATA = location.origin + _repoBase + '/data';
 
 var params = new URLSearchParams(location.search);
 // 系別単体検図: ?mode=z12（URL 互換）。PMTiles のタイルは z0–11 まで。地図の maxZoom は高めにし overzoom で拡大操作可能にする。
-// 既定 PMTiles: 47-geopackage-per-kei2pmtiles.sh が geopackage_per_kei/NN.gpkg → 05-pmtiles/zuremap/NN.pmtiles
-// ?kei=09 で 05-pmtiles/zuremap/09.pmtiles、?pmtiles= で任意パス（data/ からの相対）
+// 既定 PMTiles: 47-geopackage-per-kei2pmtiles.sh が geopackage_per_kei/NN.gpkg → 05-pmtiles/NN.pmtiles
+// ?kei=09 で 05-pmtiles/09.pmtiles、?pmtiles= で任意パス（data/ からの相対）
 var _mode = params.get('mode');
 var isZ12KeiMode = _mode === 'z12' || _mode === 'z13';
-// data/05-pmtiles/zuremap の系別ずれ PMTiles（47 出力）をまとめて表示
+// data/05-pmtiles の系別ずれ PMTiles（47 出力）をまとめて表示
 var isAllKeiPmtilesMode = _mode === 'all-kei' || _mode === 'allkei';
 /** 現行ビルドのファイル名（14 系が無い場合はスキップ。増えたらここに追加） */
 var ALL_KEI_PMTILES_STEMS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '15'];
 var _kei = params.get('kei');
 var _keiStem = _kei && /^[0-9]{2}$/.test(_kei) ? _kei : null;
 var z12KeiPmtilesRel =
-  params.get('pmtiles') || (_keiStem ? '05-pmtiles/zuremap/' + _keiStem + '.pmtiles' : '05-pmtiles/zuremap/09.pmtiles');
+  params.get('pmtiles') || (_keiStem ? '05-pmtiles/' + _keiStem + '.pmtiles' : '05-pmtiles/09.pmtiles');
 
 function z12KeiLogLine(msg, err) {
   var line = msg + (err && err.message != null ? ': ' + err.message : err ? ': ' + String(err) : '');
@@ -205,7 +205,7 @@ map.on('load', () => {
       var sid = 'pmtiles_kei_' + stem;
       var lid = sid + '_fill';
       var hlid = sid + '_selected';
-      var url = DATA + '/05-pmtiles/zuremap/' + stem + '.pmtiles';
+      var url = DATA + '/05-pmtiles/' + stem + '.pmtiles';
       map.addSource(sid, {
         type: 'vector',
         url: 'pmtiles://' + url,
