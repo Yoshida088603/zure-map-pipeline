@@ -10,10 +10,18 @@ var _repoBase =
 var DATA = location.origin + _repoBase + '/data';
 
 var params = new URLSearchParams(location.search);
+var ua = navigator.userAgent || '';
+var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+var isSmallScreen = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 900;
+var forceFullMode = params.get('full') === '1';
 // 系別単体検図: ?mode=z12（URL 互換）。PMTiles のタイルは z0–11 まで。地図の maxZoom は高めにし overzoom で拡大操作可能にする。
 // 既定 PMTiles: 47-geopackage-per-kei2pmtiles.sh が geopackage_per_kei/NN.gpkg → 05-pmtiles/zuremap/NN.pmtiles
 // ?kei=09 で 05-pmtiles/zuremap/09.pmtiles、?pmtiles= で任意パス（data/ からの相対）
 var _mode = params.get('mode');
+// iOS/小画面は Safari のメモリ制約でクラッシュしやすいので、既定を軽量な z12 単系にする（?full=1 で無効化）
+if (!_mode && (isIOS || isSmallScreen) && !forceFullMode) _mode = 'z12';
+if (_mode === 'all-kei' && (isIOS || isSmallScreen) && !forceFullMode) _mode = 'z12';
+var liteModePrefix = (isIOS || isSmallScreen) && !forceFullMode ? '軽量モード: 端末負荷対策中 / ' : '';
 var isZ12KeiMode = _mode === 'z12' || _mode === 'z13';
 // data/05-pmtiles/zuremap の系別ずれ PMTiles（47 出力）をまとめて表示
 var isAllKeiPmtilesMode = _mode === 'all-kei' || _mode === 'allkei';
@@ -84,6 +92,7 @@ if (isZ12KeiMode || isAllKeiPmtilesMode) {
   if (z12Hud) {
     if (isAllKeiPmtilesMode) {
       z12Hud.textContent =
+        liteModePrefix +
         '全系: data/05-pmtiles の ' +
         ALL_KEI_PMTILES_STEMS.length +
         ' 本（' +
@@ -91,6 +100,7 @@ if (isZ12KeiMode || isAllKeiPmtilesMode) {
         '）・タイル z0–11・overzoom 可';
     } else {
       z12Hud.textContent =
+        liteModePrefix +
         'PMTiles: ' +
           z12KeiPmtilesRel +
           '（タイル z0–11・地図は overzoom で拡大可。?kei=09 / ?pmtiles=…）';
@@ -244,7 +254,7 @@ map.on('load', async () => {
     if (z12Hud) {
       if (isAllKeiPmtilesMode) {
         z12Hud.textContent =
-          '全系: data/' +
+          liteModePrefix + '全系: data/' +
           resolvedKeiPmtilesDir +
           ' の ' +
           ALL_KEI_PMTILES_STEMS.length +
@@ -253,7 +263,7 @@ map.on('load', async () => {
           '）・タイル z0–11・overzoom 可';
       } else {
         z12Hud.textContent =
-          'PMTiles: ' +
+          liteModePrefix + 'PMTiles: ' +
           z12KeiPmtilesRel +
           '（タイル z0–11・地図は overzoom で拡大可。?kei=09 / ?pmtiles=…）';
       }
