@@ -24,7 +24,7 @@ export LANG=C.UTF-8
 cd "$REPO_ROOT"
 
 DEFAULT_IN="$REPO_ROOT/data/03-geopackage/shp2geopackage/geopackage_per_kei"
-DEFAULT_OUT="$REPO_ROOT/data/05-pmtiles"
+DEFAULT_OUT="$REPO_ROOT/data/05-pmtiles/zuremap"
 
 OUT_DIR="${PMTILES_OUT_DIR:-${2:-$DEFAULT_OUT}}"
 IN_ARG="${GPKG_PER_KEI_DIR:-${1:-$DEFAULT_IN}}"

@@ -22,6 +22,9 @@ var ALL_KEI_PMTILES_STEMS = ['01', '02', '03', '04', '05', '06', '07', '08', '09
 var _kei = params.get('kei');
 var _keiStem = _kei && /^[0-9]{2}$/.test(_kei) ? _kei : null;
 var PMTILES_ZUREMAP_DIR = params.get('pmtilesDir') || '05-pmtiles/zuremap';
+var PMTILES_LEGACY_DIR = '05-pmtiles';
+var PMTILES_DIR_CANDIDATES = [PMTILES_ZUREMAP_DIR, PMTILES_LEGACY_DIR];
+var resolvedKeiPmtilesDir = PMTILES_ZUREMAP_DIR;
 var z12KeiPmtilesRel =
   params.get('pmtiles') || (_keiStem ? PMTILES_ZUREMAP_DIR + '/' + _keiStem + '.pmtiles' : PMTILES_ZUREMAP_DIR + '/09.pmtiles');
 
@@ -32,6 +35,38 @@ function z12KeiLogLine(msg, err) {
   if (el) {
     el.textContent = el.textContent ? el.textContent + '\n' + line : line;
   }
+}
+
+function uniqStrings(items) {
+  var seen = {};
+  return items.filter(function (v) {
+    var key = String(v || '');
+    if (!key || seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
+}
+
+async function fileExistsByHead(url) {
+  try {
+    var res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+    return res.ok;
+  } catch (_err) {
+    return false;
+  }
+}
+
+async function resolveKeiPmtilesDir(stemHint) {
+  var stem = stemHint && /^[0-9]{2}$/.test(stemHint) ? stemHint : '09';
+  var dirs = uniqStrings(PMTILES_DIR_CANDIDATES);
+  for (var i = 0; i < dirs.length; i += 1) {
+    var dir = dirs[i].replace(/^\/+|\/+$/g, '');
+    var probeUrl = DATA + '/' + dir + '/' + stem + '.pmtiles';
+    if (await fileExistsByHead(probeUrl)) {
+      return dir;
+    }
+  }
+  return dirs[0].replace(/^\/+|\/+$/g, '');
 }
 
 if (isZ12KeiMode || isAllKeiPmtilesMode) {
@@ -199,14 +234,39 @@ function installZureHoverCursor(layerIds) {
   });
 }
 
-map.on('load', () => {
+map.on('load', async () => {
+  if (isZ12KeiMode || isAllKeiPmtilesMode) {
+    resolvedKeiPmtilesDir = await resolveKeiPmtilesDir(_keiStem);
+    z12KeiPmtilesRel =
+      params.get('pmtiles') ||
+      (_keiStem ? resolvedKeiPmtilesDir + '/' + _keiStem + '.pmtiles' : resolvedKeiPmtilesDir + '/09.pmtiles');
+    var z12Hud = document.getElementById('z12-kei-hud');
+    if (z12Hud) {
+      if (isAllKeiPmtilesMode) {
+        z12Hud.textContent =
+          '全系: data/' +
+          resolvedKeiPmtilesDir +
+          ' の ' +
+          ALL_KEI_PMTILES_STEMS.length +
+          ' 本（' +
+          ALL_KEI_PMTILES_STEMS.join(', ') +
+          '）・タイル z0–11・overzoom 可';
+      } else {
+        z12Hud.textContent =
+          'PMTiles: ' +
+          z12KeiPmtilesRel +
+          '（タイル z0–11・地図は overzoom で拡大可。?kei=09 / ?pmtiles=…）';
+      }
+    }
+  }
+
   if (isAllKeiPmtilesMode) {
     zureHighlightLayerIds = [];
     ALL_KEI_PMTILES_STEMS.forEach(function (stem) {
       var sid = 'pmtiles_kei_' + stem;
       var lid = sid + '_fill';
       var hlid = sid + '_selected';
-      var url = DATA + '/' + PMTILES_ZUREMAP_DIR + '/' + stem + '.pmtiles';
+      var url = DATA + '/' + resolvedKeiPmtilesDir + '/' + stem + '.pmtiles';
       map.addSource(sid, {
         type: 'vector',
         url: 'pmtiles://' + url,
