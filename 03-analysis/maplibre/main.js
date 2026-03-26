@@ -135,15 +135,15 @@ map.on('error', (e) => {
   }
 });
 
-// 色分けの入力（m）= BFR_GOSA（ずれ・前）。BFR_RANK は 1〜5 の区分コードであり RANK−GOSA はメートルにならない（凡例と一致しない）
+// 色分けの入力（m）= AFT_GOSA（ずれ・後）。ランク系はメートルにならないので step には使わない（凡例と一致しない）
 // 欠落・負値（想定外センチネル）は #bdbdbd。凡例: docs/legend-zure-deviation.md
 var zureDeviationFillColor = [
   'case',
-  ['any', ['!', ['has', 'BFR_GOSA']], ['<', ['to-number', ['get', 'BFR_GOSA']], 0]],
+  ['any', ['!', ['has', 'AFT_GOSA']], ['<', ['to-number', ['get', 'AFT_GOSA']], 0]],
   '#bdbdbd',
   [
     'step',
-    ['to-number', ['get', 'BFR_GOSA']],
+    ['to-number', ['get', 'AFT_GOSA']],
     '#87ceeb',
     0.1, '#98fb98',
     0.3, '#fffacd',
@@ -411,7 +411,7 @@ map.on('load', async () => {
     },
   });
 
-  // PMTiles（公図と現況のずれデータ・マージ済み）。塗り分けは BFR_GOSA（m）。ランクは BFR_RANK（1〜5）
+  // PMTiles（公図と現況のずれデータ・マージ済み）。塗り分けは AFT_GOSA（m）。ランクは AFT_RANK（1〜5）
   var zurePmtilesUrl = DATA + '/04-merge-geopackage/公図と現況のずれデータ_merged.pmtiles';
   map.addSource('pmtiles_zure', {
     type: 'vector',
@@ -778,7 +778,7 @@ map.on('click', 'pmtiles_toshi_merged_circle', (e) => {
   showAttributePanel('都市部官民基準点（マージ）', lng, lat, p, tks04206Label, '都市部官民基準点_マージ_属性');
 });
 
-// 公図と現況のずれデータ・ポリゴンクリック時: 全属性（地図の色は ずれ(前) BFR_GOSA m に連動）
+// 公図と現況のずれデータ・ポリゴンクリック時: 全属性（地図の色は ずれ(後) AFT_GOSA m に連動）
 var zureLabel = { id: 'ID', ooaza: '大字', koaza: '小字', chiban: '地番', jyotai: '状態', zumen: '図面', PREFCODE: '都道府県コード', CITYCODE: '市区町村コード', BFR_GOSA: 'ずれ(前)', BFR_RANK: 'ランク(前)', AFT_GOSA: 'ずれ(後)', AFT_RANK: 'ランク(後)' };
 map.on('click', 'pmtiles_zure_fill', (e) => {
   var f = e.features[0];
