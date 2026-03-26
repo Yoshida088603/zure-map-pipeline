@@ -541,12 +541,19 @@ function csvEscape(v) {
 var attrPanel = null;
 var attrPanelDrag = { active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 };
 
+function setAttrPanelDefaultPosition(panel) {
+  var panelHeight = panel.offsetHeight || 320;
+  var top = Math.max(96, Math.round((window.innerHeight - panelHeight) * 0.45));
+  panel.style.left = '20px';
+  panel.style.top = top + 'px';
+}
+
 function ensureAttrPanel() {
   if (attrPanel) return attrPanel;
   var panel = document.createElement('div');
   panel.className = 'tochi-panel';
   panel.style.left = '20px';
-  panel.style.top = '20px';
+  panel.style.top = '180px';
   panel.innerHTML =
     '<div class="tochi-panel-header">' +
     '<span class="tochi-panel-title">属性情報</span>' +
@@ -668,9 +675,8 @@ function showAttributePanel(title, lng, lat, properties, labelMap, downloadFilen
   var dlBtn = panel.querySelector('.tochi-download-btn');
   dlBtn.dataset.downloadId = downloadId;
   dlBtn.textContent = geojsonStr ? 'GeoJSONでダウンロード' : 'CSVでダウンロード';
-  panel.style.left = '20px';
-  panel.style.top = '20px';
   panel.classList.add('is-visible');
+  setAttrPanelDefaultPosition(panel);
 }
 
 function showTochiPopup(e) {

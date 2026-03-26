@@ -22,6 +22,13 @@ body {
   background: rgba(255, 255, 255, 0.96);
   border-bottom: 1px solid #ddd;
 }
+.map-app-title {
+  width: 100%;
+  font-size: 18px;
+  font-weight: 700;
+  color: #222;
+  margin: 2px 0 2px;
+}
 .map-mode-bar a {
   color: #1a5fb4;
 }
@@ -32,10 +39,21 @@ body {
 .map-mode-bar-hint code {
   font-size: 10px;
 }
+.map-beta-note {
+  width: 100%;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #7a1f00;
+}
+.map-beta-note a {
+  color: #8a2f00;
+  font-weight: 600;
+}
 
 #map {
   position: absolute;
-  top: 36px;
+  top: 110px;
   left: 0;
   width: 100%;
   bottom: 0;

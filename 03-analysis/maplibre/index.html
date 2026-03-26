@@ -2,7 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <title>MapLibre ビューア（zure-map-pipeline）</title>
+    <title>地籍ライブラリ データプレビュー（β版）</title>
     <meta
       name="description"
       content="serve.py で配信。?mode=all-kei で 05-pmtiles の系別 PMTiles 全重畳。?mode=z12 で 1 系のみ。?kei=09 や ?pmtiles= で切替。?mode=z13 は互換。"
@@ -13,12 +13,17 @@
   </head>
   <body>
     <nav class="map-mode-bar" aria-label="表示モード">
+      <div class="map-app-title">地籍ライブラリ データプレビュー（β版）</div>
       <a href="index.html">通常表示</a>
       <span aria-hidden="true">|</span>
       <a href="index.html?mode=all-kei">全系 05-pmtiles 重畳</a>
       <span aria-hidden="true">|</span>
       <a href="index.html?mode=z12">系別 1 本（z0–11）</a>
       <span class="map-mode-bar-hint">（<code>?mode=all-kei</code>・<code>?mode=z12</code>・<code>?kei=09</code>）</span>
+      <div class="map-beta-note">
+        本画面はプレビュー／デモ（β版）です。内容は必ず原本で確認してください：
+        <a href="https://www.chiseki.go.jp/" target="_blank" rel="noopener noreferrer">地籍調査Webサイト（外部リンク）</a>
+      </div>
     </nav>
     <div id="map"></div>
     <div id="z12-kei-hud" class="z12-kei-hud z12-kei-only"></div>
