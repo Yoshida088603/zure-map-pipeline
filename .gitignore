@@ -29,6 +29,8 @@ __pycache__/
 # --- data: RAW（DVD 複製）・ラスタ（原則 Git 外。構造だけ .gitkeep）---
 data/01-raw-data/**
 !data/01-raw-data/.gitkeep
+# 明示: 国土数値情報 行政区域など（上記 ** に含まれるがパスを固定しておく）
+data/01-raw-data/行政区域ポリゴン/
 data/07-rasters/**
 !data/07-rasters/.gitkeep
 
@@ -55,3 +57,6 @@ data/**/*.cpg
 # --- ローカル・一時 ---
 *.gpkg-journal
 *Zone.Identifier
+
+# 20 n03 の run 出力（run.log 等。*.gpkg は上の data/**/*.gpkg で除外済み）
+data/03-geopackage/shp2geopackage/run_n03_*/
