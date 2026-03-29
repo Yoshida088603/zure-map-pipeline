@@ -12,14 +12,11 @@
 #   出力: data/03-geopackage/shp2geopackage/N03_zure_kei_flags.gpkg
 #   系別: data/03-geopackage/shp2geopackage/geopackage_per_kei/
 #
-# 前提: Python3 仮想環境に geopandas（と高速化のため pyogrio 推奨）
-#   python3 -m venv .venv
-#   .venv/bin/pip install geopandas pyogrio
-#   source .venv/bin/activate
-#   bash 02-convert/26-n03-annotate-zure-kei.sh
+# 前提: Python3。geopandas / pyogrio が無い場合は $REPO_ROOT/.venv を作成し pip install する（初回・ネットワーク要）。
+#   N03_AUTO_PIP=0 … 自動 pip 禁止（無ければ即エラー）
 #
 # 環境変数:
-#   PYTHON3 … 使用する python（既定: PATH の python3、無ければ $REPO_ROOT/.venv/bin/python3）
+#   PYTHON3 … 使う python（既定: $REPO_ROOT/.venv/bin/python3、無ければ作成）
 #
 set -euo pipefail
 
@@ -72,21 +69,57 @@ if [[ ! -d "$PER_KEI" ]]; then
   exit 1
 fi
 
-PY="${PYTHON3:-}"
-if [[ -z "$PY" ]]; then
-  if command -v python3 &>/dev/null; then
-    PY="$(command -v python3)"
-  elif [[ -x "$REPO_ROOT/.venv/bin/python3" ]]; then
-    PY="$REPO_ROOT/.venv/bin/python3"
-  else
-    echo "Error: python3 が見つかりません。PYTHON3= または .venv を用意してください。" >&2
+VENV_PY="$REPO_ROOT/.venv/bin/python3"
+
+pick_python() {
+  if [[ -n "${PYTHON3:-}" && -x "$PYTHON3" ]] && "$PYTHON3" -c "import geopandas" 2>/dev/null; then
+    printf '%s' "$PYTHON3"
+    return 0
+  fi
+  if [[ -x "$VENV_PY" ]] && "$VENV_PY" -c "import geopandas" 2>/dev/null; then
+    printf '%s' "$VENV_PY"
+    return 0
+  fi
+  return 1
+}
+
+if PY="$(pick_python)"; then
+  :
+else
+  if ! command -v python3 &>/dev/null; then
+    echo "Error: python3 が見つかりません。" >&2
     exit 1
   fi
+  if [[ "${N03_AUTO_PIP:-1}" == "0" ]]; then
+    echo "Error: geopandas がありません。N03_AUTO_PIP=0 のため自動インストールしません。" >&2
+    exit 1
+  fi
+  if [[ ! -x "$VENV_PY" ]]; then
+    if [[ -d "$REPO_ROOT/.venv" ]]; then
+      echo "不完全な .venv を削除して作り直します…" >&2
+      rm -rf "$REPO_ROOT/.venv"
+    fi
+    echo "仮想環境を作成します: $REPO_ROOT/.venv" >&2
+    if ! python3 -m venv "$REPO_ROOT/.venv"; then
+      echo "Error: python3 -m venv に失敗しました（ensurepip が無い等）。" >&2
+      echo "  Ubuntu / WSL では次を実行してから再試行してください:" >&2
+      echo "    sudo apt update && sudo apt install -y python3-venv" >&2
+      echo "  うまくいかない場合は python3.12-venv など、python3 --version に合わせたパッケージを入れてください。" >&2
+      exit 1
+    fi
+  fi
+  PY="$VENV_PY"
+  if [[ ! -x "$PY" ]]; then
+    echo "Error: $PY がありません。venv の作成に失敗した可能性があります。" >&2
+    exit 1
+  fi
+  echo "geopandas / pyogrio を $PY にインストールします（初回のみ・ネットワーク要）…" >&2
+  "$PY" -m pip install -q -U pip setuptools wheel
+  "$PY" -m pip install -q geopandas pyogrio
 fi
 
 if ! "$PY" -c "import geopandas" 2>/dev/null; then
-  echo "Error: geopandas が $PY に入っていません。" >&2
-  echo "  $REPO_ROOT で: python3 -m venv .venv && .venv/bin/pip install geopandas pyogrio" >&2
+  echo "Error: geopandas を import できません。pip とネットワークを確認してください。" >&2
   exit 1
 fi
 
