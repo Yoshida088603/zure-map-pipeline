@@ -8,6 +8,7 @@ Thumbs.db
 
 # --- Python（venv はリポジトリに含めない）---
 .venv/
+.venv-shapely/
 venv/
 env/
 __pycache__/
@@ -50,3 +51,7 @@ data/**/*.dbf
 data/**/*.shx
 data/**/*.prj
 data/**/*.cpg
+
+# --- ローカル・一時 ---
+*.gpkg-journal
+*Zone.Identifier

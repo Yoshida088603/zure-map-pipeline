@@ -1,0 +1,12 @@
+---
+description: plan 優先；作成/削除は Yes 後；§5 外の新規はしない
+alwaysApply: true
+---
+
+# zure-map-pipeline
+
+`docs/plan.md` または `../plan.md` の **§2.3・§5・§6** に従う。**plan と推測が食い違ったら plan**。
+
+- **作成・削除**: 対象パスを列挙し、ユーザーの **Yes** があるまで実行しない。
+- **新規ファイル**: **§5 に無いパス**は作らない・提案もしない。既存（例: MapLibre は `index.html` / `main.js` 等）へ追記する。
+- **その他**（`.sh` 新規、HandsOn 触らない等）は **§2.3 本文**に任せる。

@@ -1,0 +1,64 @@
+=== 21-zure-two-pass-test 系 03 ===
+ORIGIN_ROOT=/home/ubuntu/work/cursor/zure-map-pipeline/data/01-raw-data/05ホームページ公開用データ及びプログラム/データ/公図と現況のずれデータ
+OUT_BASE=/home/ubuntu/work/cursor/zure-map-pipeline/data/03-geopackage/shp2geopackage/two_pass_test_kei03_20260322_011134
+ZURE_SHIKUCHOSON=（全市区町村）
+
+--- 第1段: VRT → GPKG（-makevalid なし） 系 03 (EPSG:6671) SHP 25 件 ---
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: A geometry of type MULTIPOLYGON is inserted into layer kozu_merged of geometry type POLYGON, which is not normally allowed by the GeoPackage specification, but the driver will however do it. To create a conformant GeoPackage, if using ogr2ogr, the -nlt option can be used to override the layer geometry type. This warning will no longer be emitted for this combination of layer and feature geometry type.
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: organizePolygons() received an unexpected geometry.  Either a polygon with interior rings, or a polygon with less than 4 points, or a non-Polygon geometry.  Return arguments as a collection.
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+Warning 1: Non closed ring detected. To avoid accepting it, set the OGR_GEOMETRY_ACCEPT_UNCLOSED_RING configuration option to NO
+[第1段] featureCount=117441  期待 RAW=117441
+--- 第2段: ST_MakeValid(geom)（SpatiaLite）---
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+Warning 1: A geometry of type GEOMETRYCOLLECTION is inserted into layer kozu_merged of geometry type POLYGON, which is not normally allowed by the GeoPackage specification, but the driver will however do it. To create a conformant GeoPackage, if using ogr2ogr, the -nlt option can be used to override the layer geometry type. This warning will no longer be emitted for this combination of layer and feature geometry type.
+Warning 1: A geometry of type POINT is inserted into layer kozu_merged of geometry type POLYGON, which is not normally allowed by the GeoPackage specification, but the driver will however do it. To create a conformant GeoPackage, if using ogr2ogr, the -nlt option can be used to override the layer geometry type. This warning will no longer be emitted for this combination of layer and feature geometry type.
+Warning 1: A geometry of type MULTIPOLYGON is inserted into layer kozu_merged of geometry type POLYGON, which is not normally allowed by the GeoPackage specification, but the driver will however do it. To create a conformant GeoPackage, if using ogr2ogr, the -nlt option can be used to override the layer geometry type. This warning will no longer be emitted for this combination of layer and feature geometry type.
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+ERROR 1: IllegalArgumentException: Points of LinearRing do not form a closed linestring
+Warning 1: A geometry of type LINESTRING is inserted into layer kozu_merged of geometry type POLYGON, which is not normally allowed by the GeoPackage specification, but the driver will however do it. To create a conformant GeoPackage, if using ogr2ogr, the -nlt option can be used to override the layer geometry type. This warning will no longer be emitted for this combination of layer and feature geometry type.
+[第2段] featureCount=117441  期待 RAW=117441
+
+[件数照合 系03] RAW=117441  第1段=117441  第2段=117441
+結果: 第2段が RAW と一致 → OK
+ログ: /home/ubuntu/work/cursor/zure-map-pipeline/data/03-geopackage/shp2geopackage/two_pass_test_kei03_20260322_011134/run.log

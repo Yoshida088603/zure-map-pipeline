@@ -1,0 +1,13 @@
+=== 2026-03-21 20:46:25 +0900 20-shp2geopackage.sh zure 開始 ===
+ORIGIN_ROOT=/home/ubuntu/work/cursor/zure-map-pipeline/data/01-raw-data/05ホームページ公開用データ及びプログラム/データ/公図と現況のずれデータ
+OUTPUT_BASE=/home/ubuntu/work/cursor/zure-map-pipeline/data/03-geopackage/shp2geopackage/run_zure_partial_20260321_204625
+ZURE_SHIKUCHOSON=練馬区
+--- 系 09 (EPSG EPSG:6677) SHP 1 件 → /home/ubuntu/work/cursor/zure-map-pipeline/data/03-geopackage/shp2geopackage/run_zure_partial_20260321_204625/geopackage_マージ前/09.gpkg ---
+Warning 1: A geometry of type MULTIPOLYGON is inserted into layer kozu_merged of geometry type POLYGON, which is not normally allowed by the GeoPackage specification, but the driver will however do it. To create a conformant GeoPackage, if using ogr2ogr, the -nlt option can be used to override the layer geometry type. This warning will no longer be emitted for this combination of layer and feature geometry type.
+[kei 09] 完了 featureCount 目安: 10720
+--- マージ GPKG ---
+Warning 1: A geometry of type MULTIPOLYGON is inserted into layer kozu_merged of geometry type POLYGON, which is not normally allowed by the GeoPackage specification, but the driver will however do it. To create a conformant GeoPackage, if using ogr2ogr, the -nlt option can be used to override the layer geometry type. This warning will no longer be emitted for this combination of layer and feature geometry type.
+[件数照合 公図と現況のずれデータ_merged.gpkg] SHP 合計=10720  GPKG=10720
+--- PMTiles ---
+zure 完了 -> /home/ubuntu/work/cursor/zure-map-pipeline/data/03-geopackage/shp2geopackage/run_zure_partial_20260321_204625/PMTiles/公図と現況のずれデータ_merged.pmtiles
+=== 2026-03-21 20:46:32 +0900 終了 ===
