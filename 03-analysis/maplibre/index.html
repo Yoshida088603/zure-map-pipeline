@@ -5,7 +5,7 @@
     <title>地籍ライブラリ データプレビュー（β版）</title>
     <meta
       name="description"
-      content="serve.py で配信。?mode=all-kei で 05-pmtiles の系別 PMTiles 全重畳。?mode=z12 で 1 系のみ。?kei=09 や ?pmtiles= で切替。?mode=z13 は互換。"
+      content="serve.py で配信。?mode=z12（kei 未指定）と all-kei はズーム8で overview→全系詳細。?kei= で 1 系のみ。?mode=overview は overview のみ。"
     />
     <link href="style.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -18,8 +18,10 @@
       <span aria-hidden="true">|</span>
       <a href="index.html?mode=all-kei">全系 05-pmtiles 重畳</a>
       <span aria-hidden="true">|</span>
-      <a href="index.html?mode=z12">系別 1 本（z0–11）</a>
-      <span class="map-mode-bar-hint">（<code>?mode=all-kei</code>・<code>?mode=z12</code>・<code>?kei=09</code>・<code>?full=1</code>）</span>
+      <a href="index.html?mode=z12">z12（既定は全系・?kei= で 1 系）</a>
+      <span aria-hidden="true">|</span>
+      <a href="index.html?mode=overview">overview（市区町村）</a>
+      <span class="map-mode-bar-hint">（z12／全系はズーム8で overview⇔詳細・<code>?mode=overview</code>・<code>?kei=09</code>・<code>?full=1</code>）</span>
       <div class="map-beta-note">
         本画面はプレビュー／デモ（β版）です。内容は必ず原本で確認してください：
         <a href="https://www.geospatial.jp/ckan/organization/mlit-chisekiseibi" target="_blank" rel="noopener noreferrer">G空間情報センター（外部リンク）</a>
@@ -29,6 +31,6 @@
     <div id="z12-kei-hud" class="z12-kei-hud z12-kei-only"></div>
     <pre id="z12-kei-console" class="z12-kei-console z12-kei-only" aria-label="診断ログ"></pre>
     <script src="https://unpkg.com/pmtiles@4.4.0/dist/pmtiles.js"></script>
-    <script src="main.js?v=20260326-1"></script>
+    <script src="main.js?v=20260329-z12-multi"></script>
   </body>
 </html>
