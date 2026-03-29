@@ -10,23 +10,27 @@ var _repoBase =
 var DATA = location.origin + _repoBase + '/data';
 
 var params = new URLSearchParams(location.search);
-var ua = navigator.userAgent || '';
-var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-var isSmallScreen = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 900;
-var forceFullMode = params.get('full') === '1';
-// 系別検図: ?mode=z12。?kei / ?pmtiles なしなら高ズームで全系タイル（all-kei と同様）。?kei=09 等で 1 系のみ。
-// iOS 等で mode 未指定から自動 z12 になる場合は従来どおり 09 のみ（負荷対策）。
-// PMTiles は z0–11。maxZoom 22 で overzoom。
+// mode 省略時は軽量（overview + 単系 PMTiles）。旧既定の多レイヤは ?mode=standard。
 var _mode = params.get('mode');
-// iOS/小画面は Safari のメモリ制約でクラッシュしやすいので、既定を軽量な z12 単系にする（?full=1 で無効化）
-if (!_mode && (isIOS || isSmallScreen) && !forceFullMode) _mode = 'z12';
-if (_mode === 'all-kei' && (isIOS || isSmallScreen) && !forceFullMode) _mode = 'z12';
-var liteModePrefix = (isIOS || isSmallScreen) && !forceFullMode ? '軽量モード: 端末負荷対策中 / ' : '';
+if (_mode == null || _mode === '') {
+  _mode = 'z12';
+} else if (
+  _mode !== 'z12' &&
+  _mode !== 'z13' &&
+  _mode !== 'all-kei' &&
+  _mode !== 'allkei' &&
+  _mode !== 'overview' &&
+  _mode !== 'standard'
+) {
+  _mode = 'z12';
+}
 var isZ12KeiMode = _mode === 'z12' || _mode === 'z13';
-// data/05-pmtiles/zuremap の系別ずれ PMTiles（47 出力）をまとめて表示
+// data/05-pmtiles/zuremap の系別ずれ PMTiles（47 出力）をまとめて表示（高負荷）
 var isAllKeiPmtilesMode = _mode === 'all-kei' || _mode === 'allkei';
 /** 低ズーム検図: overview.pmtiles（レイヤ overview_municipality・has_data） */
 var isOverviewMode = _mode === 'overview';
+/** GeoJSON ＋ 複数 PMTiles の旧「通常」ビュー（重い） */
+var isStandardMapMode = _mode === 'standard';
 /** 現行ビルドのファイル名（14 系が無い場合はスキップ。増えたらここに追加） */
 var ALL_KEI_PMTILES_STEMS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '15'];
 /** overview.pmtiles（z0–8）と系別詳細タイルの切替。レイヤの maxzoom / minzoom と一致させる */
@@ -39,14 +43,8 @@ var PMTILES_DIR_CANDIDATES = [PMTILES_ZUREMAP_DIR, PMTILES_LEGACY_DIR];
 var resolvedKeiPmtilesDir = PMTILES_ZUREMAP_DIR;
 var z12KeiPmtilesRel =
   params.get('pmtiles') || (_keiStem ? PMTILES_ZUREMAP_DIR + '/' + _keiStem + '.pmtiles' : PMTILES_ZUREMAP_DIR + '/09.pmtiles');
-/** ユーザーが URL で z12 を指定したか（自動 z12 と区別。自動 z12 は単系のみで負荷対策） */
-var explicitZ12InUrl = params.get('mode') === 'z12' || params.get('mode') === 'z13';
-var liteAutoZ12 =
-  isZ12KeiMode && !explicitZ12InUrl && (isIOS || isSmallScreen) && !forceFullMode;
-/** 高ズームで全系タイルを重ねる（all-kei、または明示 z12 で kei/pmtiles 未指定） */
-var useMultiKeiZureDetail =
-  isAllKeiPmtilesMode ||
-  (isZ12KeiMode && !_keiStem && !params.get('pmtiles') && !liteAutoZ12);
+/** 高ズームで全系タイルを重ねるのは ?mode=all-kei のみ（z12 は常に単系＋overview） */
+var useMultiKeiZureDetail = isAllKeiPmtilesMode;
 
 function z12KeiLogLine(msg, err) {
   var line = msg + (err && err.message != null ? ': ' + err.message : err ? ': ' + String(err) : '');
@@ -104,13 +102,11 @@ if (isZ12KeiMode || isAllKeiPmtilesMode || isOverviewMode) {
   if (z12Hud) {
     if (isOverviewMode) {
       z12Hud.textContent =
-        liteModePrefix +
         'overview: data/' +
         PMTILES_ZUREMAP_DIR +
         '/overview.pmtiles（source-layer: overview_municipality・has_data=1 緑 / 0 灰・タイル z0–8）';
     } else if (isAllKeiPmtilesMode) {
       z12Hud.textContent =
-        liteModePrefix +
         'ズーム<' +
         OVERVIEW_DETAIL_CUTOFF_Z +
         ': 市区町村 overview／ズーム≥' +
@@ -120,33 +116,22 @@ if (isZ12KeiMode || isAllKeiPmtilesMode || isOverviewMode) {
         ' 本（' +
         ALL_KEI_PMTILES_STEMS.join(', ') +
         '）・z0–11・overzoom 可';
-    } else if (isZ12KeiMode && useMultiKeiZureDetail) {
-      z12Hud.textContent =
-        liteModePrefix +
-        'ズーム<' +
-        OVERVIEW_DETAIL_CUTOFF_Z +
-        ': overview／ズーム≥' +
-        OVERVIEW_DETAIL_CUTOFF_Z +
-        ': 全系詳細タイル（' +
-        ALL_KEI_PMTILES_STEMS.length +
-        ' 本）。1 系のみは ?kei=09 等';
     } else {
       z12Hud.textContent =
-        liteModePrefix +
         'ズーム<' +
         OVERVIEW_DETAIL_CUTOFF_Z +
         ': overview／ズーム≥' +
         OVERVIEW_DETAIL_CUTOFF_Z +
         ': 詳細 1 系。PMTiles: ' +
-          z12KeiPmtilesRel +
-        '（全系は ?mode=z12 のみ／?kei= で別系）';
+        z12KeiPmtilesRel +
+        '（全系は ?mode=all-kei・別系は ?kei=）';
     }
   }
 }
 
 // 公図と現況のずれデータは東京付近など全国に分布。初期視点はずれデータの例の座標。
 // 庭園路ポリゴンは神戸・大阪付近、工業用地は東京付近。
-// ?mode=z12 … ベクタは PMTiles（z11 まで）。maxZoom は 22 にしてホイール／ピンチで拡大続行（z11 タイルの overzoom）
+// mode 省略＝z12: ベクタは PMTiles（z11 まで）。maxZoom 22 で overzoom。
 var map = new maplibregl.Map({
   container: 'map',
   style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json', // 地図のスタイル
@@ -340,7 +325,6 @@ map.on('load', async () => {
     if (z12Hud) {
       if (isAllKeiPmtilesMode) {
         z12Hud.textContent =
-          liteModePrefix +
           'ズーム<' +
           OVERVIEW_DETAIL_CUTOFF_Z +
           ': overview／ズーム≥' +
@@ -352,28 +336,15 @@ map.on('load', async () => {
           ' 本（' +
           ALL_KEI_PMTILES_STEMS.join(', ') +
           '）・z0–11・overzoom 可';
-      } else if (useMultiKeiZureDetail) {
-        z12Hud.textContent =
-          liteModePrefix +
-          'ズーム<' +
-          OVERVIEW_DETAIL_CUTOFF_Z +
-          ': overview／ズーム≥' +
-          OVERVIEW_DETAIL_CUTOFF_Z +
-          ': 全系詳細 data/' +
-          resolvedKeiPmtilesDir +
-          '（' +
-          ALL_KEI_PMTILES_STEMS.length +
-          ' 本・?kei=NN で 1 系）・z0–11';
       } else {
         z12Hud.textContent =
-          liteModePrefix +
           'ズーム<' +
           OVERVIEW_DETAIL_CUTOFF_Z +
           ': overview／ズーム≥' +
           OVERVIEW_DETAIL_CUTOFF_Z +
           ': 1 系。PMTiles: ' +
           z12KeiPmtilesRel +
-          '（全系は ?mode=z12 のみ・?kei= で別系）';
+          '（全系は ?mode=all-kei・別系は ?kei=）';
       }
     }
   }
@@ -450,7 +421,11 @@ map.on('load', async () => {
     return;
   }
 
-  // 既存: GeoJSON（工業用地）
+  if (!isStandardMapMode) {
+    return;
+  }
+
+  // 既存: GeoJSON（工業用地）— ?mode=standard のみ
   map.addSource('industrial_area', {
     type: 'geojson',
     data: DATA + '/06-analysis-result/polygon.geojson',

@@ -1,6 +1,8 @@
 # zure-map-pipeline
 
-**公開サイト（GitHub Pages）:** [**MapLibre ビューアを開く**](https://yoshida088603.github.io/zure-map-pipeline/03-analysis/maplibre/index.html) · [全系 05-pmtiles（`?mode=all-kei`）](https://yoshida088603.github.io/zure-map-pipeline/03-analysis/maplibre/index.html?mode=all-kei)
+**公開サイト（GitHub Pages）:** [**MapLibre ビューア（軽量・既定）**](https://yoshida088603.github.io/zure-map-pipeline/03-analysis/maplibre/index.html) · [全データ（`?mode=standard`）](https://yoshida088603.github.io/zure-map-pipeline/03-analysis/maplibre/index.html?mode=standard) · [全系 PMTiles（`?mode=all-kei`）](https://yoshida088603.github.io/zure-map-pipeline/03-analysis/maplibre/index.html?mode=all-kei)
+
+`mode` クエリを省略すると **overview ＋ 単系 PMTiles**（従来 iPhone 向けに近い負荷）。GeoJSON 多レイヤの旧トップは **`?mode=standard`**。
 
 ---
 
@@ -159,8 +161,10 @@ cd 03-analysis/maplibre && python3 serve.py
 
 |  | URL |
 |--|-----|
+| 軽量（既定・`mode` 省略） | [http://localhost:8080/03-analysis/maplibre/index.html](http://localhost:8080/03-analysis/maplibre/index.html) |
+| 全データ（旧通常・重い） | [http://localhost:8080/03-analysis/maplibre/index.html?mode=standard](http://localhost:8080/03-analysis/maplibre/index.html?mode=standard) |
 | 全系 | [http://localhost:8080/03-analysis/maplibre/index.html?mode=all-kei](http://localhost:8080/03-analysis/maplibre/index.html?mode=all-kei) |
-| 1 系（既定 09） | [http://localhost:8080/03-analysis/maplibre/index.html?mode=z12](http://localhost:8080/03-analysis/maplibre/index.html?mode=z12) |
+| 1 系（既定 09・`mode=z12` 明示） | [http://localhost:8080/03-analysis/maplibre/index.html?mode=z12](http://localhost:8080/03-analysis/maplibre/index.html?mode=z12) |
 | 系 03 | [http://localhost:8080/03-analysis/maplibre/index.html?mode=z12&kei=03](http://localhost:8080/03-analysis/maplibre/index.html?mode=z12&kei=03) |
 
 ### 系別 PMTiles 検図（データ方針）
@@ -168,8 +172,8 @@ cd 03-analysis/maplibre && python3 serve.py
 | 項目 | 内容 |
 |------|------|
 | **タイル** | **`47`** 既定で **z0–11**（`PMTILES_MAXZOOM=12` で z12 も可）。ファイル名は **`05-pmtiles/NN.pmtiles`**。 |
-| **地図** | `main.js` の系別モード（`?mode=z12`／互換 `z13`）では **`maxZoom: 22`**。z11 より先は **overzoom**。 |
-| **URL** | クエリ名 `mode=z12` は**互換のため維持**（PMTiles の実 maxzoom とは数字が一致しない）。 |
+| **地図** | 軽量パス（`mode` 省略＝`z12` 相当／`?mode=z12`／`z13`）では **`maxZoom: 22`**。z11 より先は **overzoom**。 |
+| **URL** | `mode` 省略で軽量。全系は **`?mode=all-kei` のみ**。クエリ名 `mode=z12` は**互換のため維持**（PMTiles の実 maxzoom とは数字が一致しない）。 |
 
 全系モードの一覧は **`03-analysis/maplibre/main.js` の `ALL_KEI_PMTILES_STEMS`**（`14` が無い場合は配列に含めない）。`14.pmtiles` を増やしたらこの配列に `'14'` を足す。
 

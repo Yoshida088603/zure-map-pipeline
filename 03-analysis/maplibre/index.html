@@ -5,7 +5,7 @@
     <title>地籍ライブラリ データプレビュー（β版）</title>
     <meta
       name="description"
-      content="serve.py で配信。?mode=z12（kei 未指定）と all-kei はズーム8で overview→全系詳細。?kei= で 1 系のみ。?mode=overview は overview のみ。"
+      content="serve.py で配信。mode 省略＝軽量（overview＋単系）。?mode=standard で全データ。?mode=all-kei で全系詳細。?mode=overview は overview のみ。ズーム8で overview⇔詳細。"
     />
     <link href="style.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.3.2/dist/maplibre-gl.js"></script>
@@ -14,14 +14,16 @@
   <body>
     <nav class="map-mode-bar" aria-label="表示モード">
       <div class="map-app-title">地籍ライブラリ データプレビュー（β版）</div>
-      <a href="index.html">通常表示</a>
+      <a href="index.html">軽量プレビュー（既定）</a>
+      <span aria-hidden="true">|</span>
+      <a href="index.html?mode=standard">全データプレビュー</a>
       <span aria-hidden="true">|</span>
       <a href="index.html?mode=all-kei">全系 05-pmtiles 重畳</a>
       <span aria-hidden="true">|</span>
-      <a href="index.html?mode=z12">z12（既定は全系・?kei= で 1 系）</a>
+      <a href="index.html?mode=z12">z12 明示（単系・?kei= で別系）</a>
       <span aria-hidden="true">|</span>
       <a href="index.html?mode=overview">overview（市区町村）</a>
-      <span class="map-mode-bar-hint">（z12／全系はズーム8で overview⇔詳細・<code>?mode=overview</code>・<code>?kei=09</code>・<code>?full=1</code>）</span>
+      <span class="map-mode-bar-hint">（軽量＝mode 省略／<code>?mode=standard</code>・<code>?mode=all-kei</code>・<code>?kei=09</code>）</span>
       <div class="map-beta-note">
         本画面はプレビュー／デモ（β版）です。内容は必ず原本で確認してください：
         <a href="https://www.geospatial.jp/ckan/organization/mlit-chisekiseibi" target="_blank" rel="noopener noreferrer">G空間情報センター（外部リンク）</a>
@@ -31,6 +33,6 @@
     <div id="z12-kei-hud" class="z12-kei-hud z12-kei-only"></div>
     <pre id="z12-kei-console" class="z12-kei-console z12-kei-only" aria-label="診断ログ"></pre>
     <script src="https://unpkg.com/pmtiles@4.4.0/dist/pmtiles.js"></script>
-    <script src="main.js?v=20260329-z12-multi"></script>
+    <script src="main.js?v=20260329-lowload"></script>
   </body>
 </html>
