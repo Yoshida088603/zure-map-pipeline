@@ -7,13 +7,17 @@
 # 終了時に SHP 合計と GPKG の featureCount を照合し、不一致なら exit 1（原因調査のため）。
 # 照合を省略する場合: VERIFY_GPKG_COUNT=0  /  zure 以外で MakeValid を無効: OGR2OGR_NO_MAKEVALID=1（非推奨）
 # DBF 文字化けは VRT 側の OpenOptions（CP932）などで調整。
-# 使い方: bash 02-convert/20-shp2geopackage.sh [sample|14jyo|zure|zure-twopass-test|all] […]
+# 使い方: bash 02-convert/20-shp2geopackage.sh [sample|14jyo|zure|zure-twopass-test|n03|all] […]
 # - sample: input の *.shp → shp2geopackage/run_sample_<TS>/ に各 .gpkg
 # - 14jyo:  RAW の 14条地図 内の全 SHP → 1 GPKG（run_14jyo_<TS>/）
 # - zure:   ずれまっぷ（公図と現況のずれデータ）RAW 公図 → 系ごと 1 GPKG（geopackage_per_kei/）。統合は 40-merge-csv-sauce-geopackage.sh zure
 # - zure-twopass-test [系]: 単一系の 2 段階試走。ZURE_TWO_PASS=1・ZURE_ONLY_KEI・出力 two_pass_test_keiNN_<TS>/ を自動設定して zure 実行（第2引数省略時は 03）。OUTPUT_BASE は上書き可。
 # 市区町村のみテスト: ZURE_SHIKUCHOSON=練馬区（カンマ区切りで複数可）→ */公図/<市区町村名>/* の SHP のみ。
 # 系のみテスト: ZURE_ONLY_KEI=03 または 03,08（2 桁。存在する系だけ処理）※ zure モード時
+# - n03: 国土数値情報 N03 行政区域 SHP 1 本 → GPKG（19-gml2geopackage 不要）。第2引数で .shp パス可。
+#   既定: data/01-raw-data/行政区域ポリゴン/N03-20250101.shp ／ -s_srs EPSG:6668 ／ -oo ENCODING=UTF-8
+#   列を絞る: N03_OGR_SELECT=N03_007 または N03_SLIM=1（N03_007 のみ＋ジオメトリ）
+#   出力先: OUTPUT_DIR または run_n03_<TS>/ ／ レイヤ名: N03_LAYER_NAME（既定 N03）
 # 前提: PATH に ogr2ogr。zure で ZURE_TWO_PASS=1 のときは python3（SpatiaLite SQL 生成）。
 
 set -e
@@ -372,6 +376,63 @@ run_zure() {
   )
 }
 
+# 国土数値情報 N03 行政区域（Shapefile 1 本）→ GPKG。第1引数は呼び出し側で渡すオプション SHP パス（空なら既定）。
+run_n03() {
+  local cli_shp="${1:-}"
+  local RAW_DIR="$REPO_ROOT/data/01-raw-data/行政区域ポリゴン"
+  local SHP="${N03_SHP:-}"
+  if [[ -z "$SHP" && -n "$cli_shp" ]]; then
+    SHP="$cli_shp"
+  fi
+  if [[ -z "$SHP" ]]; then
+    SHP="$RAW_DIR/N03-20250101.shp"
+  fi
+  if [[ ! -f "$SHP" ]]; then
+    echo "Error: N03 SHP が見つかりません: $SHP（N03_SHP または第2引数で指定）" >&2
+    exit 1
+  fi
+  local stem
+  stem=$(basename "$SHP" .shp)
+  local RUN_TS
+  RUN_TS=$(TZ=Asia/Tokyo date +%Y%m%d_%H%M%S)
+  local OUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/data/03-geopackage/shp2geopackage/run_n03_${RUN_TS}}"
+  mkdir -p "$OUT_DIR"
+  local RUN_LOG="$OUT_DIR/run.log"
+  local LAYER_NAME="${N03_LAYER_NAME:-N03}"
+  local OUT_GPKG="$OUT_DIR/${stem}_行政区域.gpkg"
+  local T_SRS="${T_SRS:-EPSG:4326}"
+  local S_SRS="${N03_S_SRS:-EPSG:6668}"
+  local select_arg=()
+  local _sel="${N03_OGR_SELECT:-}"
+  if [[ -z "$_sel" && "${N03_SLIM:-0}" == "1" ]]; then
+    _sel="N03_007"
+  fi
+  if [[ -n "$_sel" ]]; then
+    select_arg=( -select "$_sel" )
+  fi
+
+  echo "[n03] $SHP → $OUT_GPKG (s_srs=$S_SRS t_srs=$T_SRS layer=$LAYER_NAME)" >&2
+  rm -f "$OUT_GPKG"
+  (
+    set -e
+    exec > >(tee -a "$RUN_LOG") 2>&1
+    echo "=== $(TZ=Asia/Tokyo date -Iseconds) n03 開始 ==="
+    echo "SHP=$SHP OUT_GPKG=$OUT_GPKG N03_OGR_SELECT=${N03_OGR_SELECT:-} N03_SLIM=${N03_SLIM:-0}"
+    ogr2ogr "${OGR2OGR_MV[@]}" \
+      -s_srs "$S_SRS" \
+      -t_srs "$T_SRS" \
+      -oo ENCODING=UTF-8 \
+      "${select_arg[@]}" \
+      -f GPKG -nln "$LAYER_NAME" \
+      "$OUT_GPKG" "$SHP"
+    local exp act
+    exp=$(sum_ogrjson_feature_count "$SHP")
+    act=$(gpkg_layer_feature_count "$OUT_GPKG" "$LAYER_NAME")
+    verify_gpkg_vs_shp "n03 ${stem}" "$exp" "$act"
+    echo "n03 完了 -> $OUT_GPKG"
+  )
+}
+
 MODE="${1:-all}"
 TWOPASS_TEST_KEI="${2:-}"
 
@@ -392,15 +453,17 @@ case "$MODE" in
     export OUTPUT_BASE="${OUTPUT_BASE:-$REPO_ROOT/data/03-geopackage/shp2geopackage/two_pass_test_kei${KEI_TPT}_${RUN_TS_TPT}}"
     run_zure
     ;;
+  n03) run_n03 "${2:-}" ;;
   all)
     run_sample
     run_14jyo
     run_zure
     ;;
   *)
-    echo "Usage: $0 [sample|14jyo|zure|zure-twopass-test|all] […]" >&2
+    echo "Usage: $0 [sample|14jyo|zure|zure-twopass-test|n03|all] […]" >&2
     echo "  zure 用: ZURE_SHIKUCHOSON=… OUTPUT_BASE=…  ZURE_TWO_PASS=0|1（既定1: 2段階 ST_MakeValid）  ZURE_ONLY_KEI=03,08（任意）" >&2
     echo "  単一系試走: $0 zure-twopass-test [03]" >&2
+    echo "  N03 行政区域: $0 n03 [path/to/N03-20250101.shp] ／ N03_SLIM=1 N03_OGR_SELECT=… T_SRS=EPSG:6668（JGD2011のまま）など" >&2
     exit 1
     ;;
 esac
