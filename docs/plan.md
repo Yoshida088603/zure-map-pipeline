@@ -165,6 +165,7 @@ flowchart TD
 | **10** | `10-data-preview.sh` | `data/01-raw-data` | ベースライン（件数・構造・処理区分）。変換しない |
 | **20** | `20-shp2geopackage.sh` | SHP→個別 GPKG | 変換。**`zure` / `14jyo` / `zure-twopass-test`（単一系試走）** 等。**`verify_gpkg_vs_shp`（SHP 合計 vs GPKG 件数）**。マージ・PMTiles なし |
 | **25** | `25-csv2geopackage.sh` | CSV→個別 GPKG | データセット別に `csv2geopackage/` へ出力 |
+| **26** | `26-n03-annotate-zure-kei.sh` | N03 GPKG＋`geopackage_per_kei` | 各市区町村ポリゴンに **系別公図ずれとの交差フラグ**（`zure_kei_NN` 列）を付与した GPKG を出力。**geopandas** 必須（仮想環境） |
 | **30** | `30-check-geopackage.sh` | 個別 GPKG | **RAW 公図 SHP と `geopackage_per_kei` の件数突合**（ogrinfo）。`20` の verify と同じ観点を後から再確認可能 |
 | **40** | `40-merge-csv-sauce-geopackage.sh` | `04-merge-geopackage/` | 用途別マージ（`zure` は系別 GPKG を 1 本化） |
 | **42** | `42-check-merged-geopackage.sh` | 統合 GPKG | **ogrinfo** 先頭部の表示（目視）。合格判定ロジックなし |
@@ -226,6 +227,7 @@ Cursor/zure-map-pipeline/
 ├── 02-convert/
 │   ├── 20-shp2geopackage.sh
 │   ├── 25-csv2geopackage.sh
+│   ├── 26-n03-annotate-zure-kei.sh
 │   ├── 30-check-geopackage.sh
 │   ├── 40-merge-csv-sauce-geopackage.sh
 │   ├── 42-check-merged-geopackage.sh
